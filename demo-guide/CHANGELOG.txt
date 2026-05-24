@@ -1,0 +1,189 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║                                                                      ║
+║         CHANGELOG                                                    ║
+║                                                                      ║
+║         Updated on every major release.                              ║
+║         Newest entries on top. Append, never rewrite history.        ║
+║                                                                      ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+
+════════════════════════════════════════════════════════════════════════
+  v1.7.0  ·  2026-05-24  ·  "Lifecycle emails everywhere"
+════════════════════════════════════════════════════════════════════════
+
+  ADDED  ───────────────────────────────────────────────────────────────
+    • Welcome email on first successful email-verification (organic
+      signup path). Once per user, ever.
+    • Welcome email on admin-provisioned account creation
+      (/admin/users + /admin/students with createLogin) — auto-verified
+      accounts get a "your password was set by an admin" framing.
+    • Tutor-assignment emails — when an admin links a tutor to a
+      student, both the tutor ("you've been assigned X") and the
+      parent ("X now has a tutor") get notified.
+    • Account-suspended security notice — sent to the affected user
+      (not dedup'd; security alerts must always fire).
+    • Account-reinstated notice when unsuspended.
+    • Bulk-suspend emails each newly-suspended user individually.
+    • Password-changed security notice — fires even on self-initiated
+      password changes so a stolen session gets flagged.
+    • Email-change security notice sent to the OLD email address (the
+      only one the rightful owner still controls if the email was
+      hijacked). The new address still gets its verification link.
+    • Tutor weekly digest mirrors the parent digest — cohort summary
+      every 7 days, deduped via isoWeekKey().
+
+  NOTES  ───────────────────────────────────────────────────────────────
+    • Every new email is best-effort: a send failure logs and returns
+      silently, never breaks the mutation that triggered it.
+    • Every email honors the platform-wide `email_notifications`
+      feature flag in /admin/settings.
+    • Welcomes + tutor-assignment emails dedupe via NotificationLog.
+      Security notices (suspend, password, email change) intentionally
+      DO NOT dedupe.
+
+════════════════════════════════════════════════════════════════════════
+  v1.6.0  ·  2026-05-24  ·  "Drill-down everywhere + skill authoring"
+════════════════════════════════════════════════════════════════════════
+
+  ADDED  ───────────────────────────────────────────────────────────────
+    • /admin/quizzes — brand-new drill-down log. One row per quiz, NOT
+      averaged. URL-synced filters for grade, student-name search,
+      status (completed / active / all), and single-day pin.
+    • Clickable chart bars/points — every major chart now navigates to
+      /admin/quizzes with filters pre-applied:
+          ◇ Admin dashboard: Quizzes-per-day bar  → ?day=YYYY-MM-DD
+          ◇ Admin dashboard: Avg-score-per-grade bar → ?gr=N
+          ◇ Admin analytics: Quizzes-by-grade bar    → ?gr=N
+          ◇ Parent/Tutor: Score-trend point          → quiz results
+    • Admin settings: platform stats panel with parent / tutor / admin
+      / student / quiz / completed-24h / badge / organization counts.
+    • + Add student modal in /admin/students, with optional bundled
+      login account (single-step provisioning).
+    • + New user modal in /admin/users — creates any role.
+    • /admin/content: "+ Add skill" inline button on every expanded
+      topic group. Admin types a name; server auto-assigns code
+      (e.g. S.12) and number, sets active=true, audit-logs the create.
+      New skills flow into generated quizzes immediately.
+    • demo-guide/ folder: README + per-role perspective files
+      (super-admin, org-admin, parent, tutor, student) + this changelog.
+
+  FIXED  ───────────────────────────────────────────────────────────────
+    • /admin/students "View" button now works for admins — middleware
+      previously bounced admins off /parent/* paths.
+    • /admin/users "All roles" filter now actually shows all roles
+      instead of silently falling back to parents.
+    • Hydration mismatch on phones with non-en-US locales — every
+      Date.toLocaleDateString() now passes "en-US" explicitly.
+    • Server SSR / client locale mismatch in Live host console — moved
+      window-only URL building into useEffect.
+
+  INFRA  ───────────────────────────────────────────────────────────────
+    • LAN-accessible dev: bind dev server to 0.0.0.0 + set NEXTAUTH_URL
+      to LAN IP so phones can complete auth callbacks.
+
+
+════════════════════════════════════════════════════════════════════════
+  v1.5.0  ·  2026-05  ·  "Live classroom"
+════════════════════════════════════════════════════════════════════════
+
+  ADDED
+    • /live/host  + /live/join + /live/<CODE> Kahoot-style live quiz.
+    • SSE-backed presence with 8-second grace period after disconnect.
+    • Twilio SMS dev fallback (codes print to console).
+
+
+════════════════════════════════════════════════════════════════════════
+  v1.4.0  ·  2026-05  ·  "Single-client hardening"
+════════════════════════════════════════════════════════════════════════
+
+  CHANGED
+    • Crypto: replaced Math.random() in token generation with
+      crypto.randomBytes() / crypto.randomInt() throughout.
+    • Rate limit on /api/auth/forgot-password now keyed per-account
+      (was per-IP only).
+    • Cron-style timing safer for digest notifications.
+
+  CLARIFIED
+    • Multi-tenancy findings re-graded — product is single-client by
+      design. Org column exists for organizational labelling, not
+      cross-customer isolation.
+
+
+════════════════════════════════════════════════════════════════════════
+  v1.3.0  ·  2026-04  ·  "Polish pass"
+════════════════════════════════════════════════════════════════════════
+
+  ADDED
+    • Dark mode now persists in DB (User.darkMode), not just LS.
+    • Skeleton loaders + retry cards on every async page.
+    • Global error boundary + friendly 404.
+    • Dynamic chart imports (ssr:false) keep first-paint fast.
+    • Pagination component with page-N URL params, 10/page default.
+
+
+════════════════════════════════════════════════════════════════════════
+  v1.2.0  ·  2026-04  ·  "Admin panel"
+════════════════════════════════════════════════════════════════════════
+
+  ADDED
+    • /admin/dashboard, /admin/users, /admin/students, /admin/content,
+      /admin/analytics, /admin/settings.
+    • Audit log — every admin mutation writes one AuditLog row.
+    • Impersonation with red banner + enter/exit audit entries.
+    • CSV export for users + analytics datasets.
+    • Feature flag table with runtime toggles.
+    • Maintenance mode blocks non-admin routes when enabled.
+
+
+════════════════════════════════════════════════════════════════════════
+  v1.1.0  ·  2026-03  ·  "Child panel + gamification"
+════════════════════════════════════════════════════════════════════════
+
+  ADDED
+    • Kid panel (/child/home, /child/quiz, /child/quiz/.../results).
+    • XP curve, levels, streak counter.
+    • 7 badges: First Quiz, Perfect Score, Topic Master, Speed Demon,
+      Comeback Kid, Streak ×N, Level Up.
+    • Parental window controls (start / end, overnight spans).
+    • "Who's watching?" picker for shared-device families.
+
+
+════════════════════════════════════════════════════════════════════════
+  v1.0.0  ·  2026-02  ·  "Parent panel"
+════════════════════════════════════════════════════════════════════════
+
+  ADDED
+    • Multi-child parent dashboard + per-child detail view.
+    • Score-trend chart with real time axis.
+    • Weak topics panel, EditTopics inline.
+    • Notification settings (4 toggles).
+    • Account settings with soft-delete + anonymize.
+
+
+════════════════════════════════════════════════════════════════════════
+  v0.9.0  ·  2026-02  ·  "Foundation"  (auth + schema)
+════════════════════════════════════════════════════════════════════════
+
+  ADDED
+    • NextAuth v4 + Prisma adapter + bcrypt + Ethereal email dev mode.
+    • Three role shells: ParentLayout, ChildLayout, AdminLayout.
+    • Role-aware middleware.
+    • Schema: User, Account, Session, ParentalSettings, Badge,
+      StudentBadge, XPLog, FeatureFlag, AuditLog, NotificationSettings.
+
+
+────────────────────────────────────────────────────────────────────────
+  HOW TO ADD A NEW ENTRY  (for whoever ships the next change)
+────────────────────────────────────────────────────────────────────────
+
+  1. Bump the version (semver: MAJOR.MINOR.PATCH).
+       MAJOR  → breaking schema or auth change
+       MINOR  → new user-visible feature
+       PATCH  → bugfix or polish only
+  2. Insert a new section at the TOP using the same banner format.
+  3. Group lines under ADDED / CHANGED / FIXED / REMOVED / INFRA.
+  4. Each bullet stands alone — someone skimming should grok it
+     without reading the section above or below.
+  5. If a role's feature set changed, also update that role's file
+     in this folder (01-…txt through 05-…txt).

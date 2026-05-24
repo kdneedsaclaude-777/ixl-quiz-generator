@@ -1,0 +1,121 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║                                                                      ║
+║         SUPER ADMIN  —  perspective                                  ║
+║                                                                      ║
+║         "I see every organization, every kid, every quiz."           ║
+║                                                                      ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+  Email:     admin@ixl.local
+  Password:  Admin1234!
+  Lands on:  /admin/dashboard
+  Theme:     Dark slate sidebar (admin shell)
+
+
+┌──────────────────────────────────────────────────────────────────────┐
+│  WHAT THEY SEE  —  sidebar navigation                                │
+└──────────────────────────────────────────────────────────────────────┘
+
+   ▸ Dashboard       Six KPI tiles + Quizzes-per-day + Avg-score-per-grade
+   ▸ Users           Every parent / tutor / orgadmin / superadmin in any org
+   ▸ Students        Every student in any org
+   ▸ Quizzes         Drill-down log — one row per individual quiz
+   ▸ Content         Curriculum: topic groups & skills, enable/disable
+   ▸ Analytics       Multi-chart deep dive + CSV export
+   ▸ Settings        Feature flags, audit log, platform stats, defaults
+
+
+┌──────────────────────────────────────────────────────────────────────┐
+│  PAGE-BY-PAGE FUNCTIONS                                              │
+└──────────────────────────────────────────────────────────────────────┘
+
+  /admin/dashboard
+      • Six KPI cards (parents · tutors · admins · students · quizzes ·
+        completed in last 24h).
+      • Bar chart: quizzes per day, last 30 days — CLICK A BAR → drills
+        into /admin/quizzes filtered to that single day.
+      • Bar chart: average score per grade — CLICK A BAR → drills into
+        /admin/quizzes filtered to that grade.
+      • 20-row platform activity feed.
+
+  /admin/users
+      • Paginated, searchable table of every account across every org.
+      • Filter by role (All / Parent / Tutor / Orgadmin / Superadmin).
+      • Row actions: View, Suspend, Unsuspend, Impersonate, Soft-delete.
+      • Bulk select → Suspend many at once.
+      • CSV export of the current filtered view.
+      • "+ New user" modal → create any role, including other superadmins.
+
+  /admin/students
+      • Paginated table of every student.
+      • Filter by grade, by difficulty, search by name / parent name.
+      • Click "View" → opens the parent view of that child
+        (/parent/child/[id]) so admin can see what the parent sees.
+      • Inline edit: name, grade, difficulty, parent reassignment.
+      • Tutor assignment per child.
+      • "+ Add student" modal → create with parent picker + optional
+        bundled login account in one step.
+
+  /admin/quizzes  (drill-down target for the dashboard charts)
+      • One row per quiz. NOT averaged.
+      • URL-synced filters: grade, student name search, status
+        (completed / active / all), single-day pin from chart drill-down.
+      • Shows quiz id, date, student (linked), grade, status, score,
+        difficulty level.
+      • Pagination, deep-linkable URLs.
+
+  /admin/content
+      • Per-grade list of topic groups and their skills.
+      • Toggle a topic group or single skill OFF — quiz generator stops
+        using it immediately.
+      • Rename a topic group inline.
+      • Expand a topic group → "+ Add skill" inline form at the bottom.
+        Type a name, hit Enter. Server auto-assigns the code (S.12,
+        BB.4, …) and number; new skill is active immediately and flows
+        into generated quizzes right away. Each create is audit-logged.
+
+  /admin/analytics
+      • Quizzes-by-grade bar chart (7d / 30d toggle) — CLICK → drills
+        into /admin/quizzes for that grade.
+      • Difficulty curve per grade.
+      • Drop-off chart: started vs completed quizzes per day.
+      • CSV export for every dataset (?dataset=quizzes_by_grade etc.).
+
+  /admin/settings
+      • Platform stats panel (counts of every entity, mirrors dashboard).
+      • Feature flags table — toggle gamification, timer, dark_mode,
+        diagnostic_quiz, maintenance_mode at runtime.
+      • Maintenance mode banner — when ON, every non-admin route shows
+        a maintenance page; admin still works.
+      • Audit log viewer — every admin mutation is logged with actor,
+        action, target, metadata, timestamp.
+
+
+┌──────────────────────────────────────────────────────────────────────┐
+│  POWERS THAT ONLY THE SUPER ADMIN HAS                                │
+└──────────────────────────────────────────────────────────────────────┘
+
+   ◆ Cross-org visibility — every other role is scoped to one org.
+   ◆ Impersonate ANY user (red banner shows during impersonation;
+     audit log records enter + exit).
+   ◆ Toggle global feature flags — including maintenance mode that
+     locks every other role out.
+   ◆ Create / suspend / delete admins (orgadmin and other superadmins).
+   ◆ Run CSV exports across all data, not just one org's slice.
+
+
+┌──────────────────────────────────────────────────────────────────────┐
+│  DEMO SCRIPT  —  90 seconds                                          │
+└──────────────────────────────────────────────────────────────────────┘
+
+   1. Log in → land on dashboard. Point at the 6 KPI tiles.
+   2. Click a bar on "Quizzes per day". Land on /admin/quizzes with the
+      day pre-filled. Say: "Real rows. Not averages. Every quiz is
+      auditable."
+   3. Sidebar → Users. Pick a parent → click Impersonate.
+   4. Red banner across the top. You're now in the parent panel. Click
+      Exit Impersonation → back to admin.
+   5. Sidebar → Settings → flip Maintenance Mode on. Open an incognito
+      window and visit /parent — get the maintenance page. Flip it off.
+   6. Sidebar → Settings → Audit Log. Show the rows for the impersonate
+      enter, exit, and the maintenance flag flip.

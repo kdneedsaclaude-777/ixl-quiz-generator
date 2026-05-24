@@ -1,0 +1,64 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║                                                                      ║
+║         ORG ADMIN  —  perspective                                    ║
+║                                                                      ║
+║         "I run one school. I never see another org's data."          ║
+║                                                                      ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+  Email:     orgadmin@demo.local
+  Password:  OrgAdmin1234!
+  Lands on:  /admin/dashboard
+  Org:       Demo Academy
+  Theme:     Same dark slate sidebar as super admin
+
+
+┌──────────────────────────────────────────────────────────────────────┐
+│  THE ONE BIG DIFFERENCE                                              │
+└──────────────────────────────────────────────────────────────────────┘
+
+   Every query is scoped by adminScope() which adds
+   { orgId: <theirOrg> } to every WHERE clause:
+
+     • Users list  → only this org's parents/tutors/admins
+     • Students    → only this org's kids
+     • Quizzes     → only quizzes from this org's kids
+     • Analytics   → only this org's slices
+     • Audit log   → only entries about this org's targets
+
+   Same UI shell as super admin, but the data behind it is one slice.
+
+
+┌──────────────────────────────────────────────────────────────────────┐
+│  WHAT THEY CAN DO                                                    │
+└──────────────────────────────────────────────────────────────────────┘
+
+   ✓ See their org's dashboard KPIs and charts.
+   ✓ Click chart bars → drill to /admin/quizzes (scoped to their org).
+   ✓ Add / edit / suspend / delete parents, tutors, and students
+     within their own org.
+   ✓ Impersonate users in their own org.
+   ✓ Toggle topic-group + skill active state for content (org-scoped
+     where applicable).
+   ✓ View audit log entries for their org.
+   ✓ Export CSV — only their own org's rows.
+
+
+┌──────────────────────────────────────────────────────────────────────┐
+│  WHAT THEY CAN'T DO                                                  │
+└──────────────────────────────────────────────────────────────────────┘
+
+   ✗ See ANY other org's users, students, or quizzes.
+   ✗ Create or manage superadmins.
+   ✗ Toggle global feature flags (gamification, maintenance mode, …) —
+     those are platform-wide and gated to superadmin only.
+   ✗ Impersonate a user from another org.
+
+
+┌──────────────────────────────────────────────────────────────────────┐
+│  DEMO HOOK                                                           │
+└──────────────────────────────────────────────────────────────────────┘
+
+   To prove the isolation: log into super admin in one tab, create a
+   second org with a parent inside it. Log into orgadmin@demo.local
+   in another tab. The new parent never appears in their Users list.

@@ -1,0 +1,99 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║                                                                      ║
+║         PARENT  —  perspective                                       ║
+║                                                                      ║
+║         "I want to know my kids are practising and progressing."     ║
+║                                                                      ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+  Email:     parent@demo.local
+  Password:  Parent1234!
+  Lands on:  /parent/dashboard
+  Owns:      Ben (G6) and Ben #2 (G2)
+  Theme:     Clean white / dark — left sidebar nav, header child switcher
+
+
+┌──────────────────────────────────────────────────────────────────────┐
+│  SIDEBAR NAV                                                         │
+└──────────────────────────────────────────────────────────────────────┘
+
+   ▸ Dashboard         All-children rollup
+   ▸ Children          Card list, "+ Add child" → /onboarding
+   ▸ Notifications     Activity feed (quiz completed, badge earned, …)
+   ▸ Settings
+       └ Account       Name, email, password, soft-delete
+       └ Notifications 4 toggles (per-quiz email, weekly digest,
+                       low-score alert, no-practice-days alert)
+   ▸ Logout
+
+
+┌──────────────────────────────────────────────────────────────────────┐
+│  PAGE-BY-PAGE FUNCTIONS                                              │
+└──────────────────────────────────────────────────────────────────────┘
+
+  /parent/dashboard
+      • 4 summary cards: children count, quizzes this week, avg score
+        this week, hardest topic across all children.
+      • Multi-line trend chart — one colored line per child, last 30
+        days of scores.
+      • Child cards with avatar, current level, last-active time,
+        quick "Open" button.
+
+  /parent/child/[id]   ← the heart of the parent panel
+      • Big avatar + name + grade + current difficulty level.
+      • Score-trend chart (last 10 quizzes, real time axis).
+        CLICK A POINT → opens that specific quiz's results page.
+      • Quiz history table with status pill (Completed / In progress /
+        Not started) and Resume/View/Start link per row.
+      • Weak topics panel — skills the adaptive engine has flagged for
+        remediation.
+      • Edit which topic groups the child practices (EditTopics).
+      • Parental controls form:
+          – Max quizzes per day (or unlimited)
+          – Allowed practice window (start / end, supports overnight
+            spans like 22:00 → 02:00)
+          – Lock specific topic groups
+      • CSV / PDF export of the child's full history.
+
+  /parent/children
+      • Same as the dashboard list, page of its own.
+
+  /parent/notifications
+      • Stream of every meaningful event for any of their kids:
+        quiz completed, badge earned, streak milestone, low-score alert.
+
+  /parent/settings/account
+      • Update name / email / password.
+        Email change downgrades emailVerified → null + sends a new
+        verification link (Ethereal preview URL prints to dev console).
+      • Soft-delete: type "DELETE" to confirm. Anonymizes account and
+        unlinks children (admin can re-assign).
+
+  /parent/settings/notifications
+      • Per-quiz email           (off by default)
+      • Weekly digest            (on by default)
+      • Alert below score %      (default threshold 60)
+      • Alert after N quiet days (default 7)
+
+
+┌──────────────────────────────────────────────────────────────────────┐
+│  DEMO HOOKS                                                          │
+└──────────────────────────────────────────────────────────────────────┘
+
+   1. Trend chart → click a point → land directly on that quiz's
+      results.
+   2. Open Parental Controls, set window 09:00 → 09:01. Open the kid
+      panel for that child in another tab — they hit a "practice is
+      locked right now" screen.
+   3. Set window back to 00:00 → 23:59 and they're unblocked.
+   4. CSV export → spreadsheet of every attempt with timestamps.
+
+
+┌──────────────────────────────────────────────────────────────────────┐
+│  WHAT A PARENT CAN'T DO                                              │
+└──────────────────────────────────────────────────────────────────────┘
+
+   ✗ See another parent's children.
+   ✗ Edit content, topic groups, or skill metadata.
+   ✗ Suspend tutors / other parents.
+   ✗ Open the admin panel — middleware bounces them.

@@ -1,0 +1,118 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║                                                                      ║
+║         EMAIL NOTIFICATIONS  —  full matrix                          ║
+║                                                                      ║
+║         "Who gets an email, when, and how do I turn it off?"         ║
+║                                                                      ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+
+┌──────────────────────────────────────────────────────────────────────┐
+│  GLOBAL OFF SWITCH                                                   │
+└──────────────────────────────────────────────────────────────────────┘
+
+  /admin/settings → Feature flags → email_notifications
+      OFF  → no emails of any kind go out
+      ON   → emails follow the per-role + per-event rules below
+
+  Channel auto-detected:
+      • If RESEND_API_KEY is set → real inbox delivery via Resend.
+      • If SMTP_HOST/USER/PASS set → real SMTP.
+      • Otherwise → Ethereal dev account; preview URL prints to the
+        terminal that runs `npm run dev`.
+
+
+┌──────────────────────────────────────────────────────────────────────┐
+│  LIFECYCLE EMAILS                                                    │
+└──────────────────────────────────────────────────────────────────────┘
+
+  EVENT                            WHO GETS IT          DEDUPED?
+  -------------------------------- -------------------- --------------
+  Account created (organic)        New user             —
+    → verification email
+  Email verified for the 1st time  New user             ✓ once/user
+    → welcome email
+  Account created by an admin      New user             ✓ once/user
+    → welcome email (auto-verified, no link)
+  Student account created with
+    "+ Add student" + login        The student          ✓ once/user
+    → welcome email
+
+  Tutor assigned to student        Tutor                ✓ per pair/day
+    → "you've been assigned X"
+  Tutor assigned to student        Parent of student    ✓ per pair/day
+    → "X now has a tutor"
+
+  Quiz completed                   Student (own login)  ✓ per quiz
+  Quiz completed                   Each assigned tutor  ✓ per quiz
+  Quiz completed                   Parent (opt-in)      ✓ per quiz
+  Quiz completed below threshold   Parent               ✓ per quiz
+
+
+┌──────────────────────────────────────────────────────────────────────┐
+│  SECURITY NOTICES  —  always fire, never deduped                     │
+└──────────────────────────────────────────────────────────────────────┘
+
+  EVENT                            WHO GETS IT
+  -------------------------------- -----------------------------------
+  Account suspended                The suspended user
+  Account reinstated               The reinstated user
+  Password changed (self-service)  The account owner
+  Email changed (self-service)     The OLD email address (the only
+                                   one the rightful owner still
+                                   controls if hijacked)
+  Email change in progress         The NEW address — verification link
+  Forgot password requested        The account owner — reset link
+
+
+┌──────────────────────────────────────────────────────────────────────┐
+│  SCHEDULED / RECURRING                                               │
+└──────────────────────────────────────────────────────────────────────┘
+
+  EVENT                            WHO GETS IT          CADENCE
+  -------------------------------- -------------------- --------------
+  Weekly parent digest             Parent (opt-in)      once per ISO
+                                                        week, per parent
+  Weekly tutor digest              Tutor (opt-in)       once per ISO
+                                                        week, per tutor
+  Inactivity alert                 Parent (opt-in,      once per day
+                                   per child)           per child
+
+  Triggered by:  POST /api/cron/notifications
+                 Header: Authorization: Bearer $CRON_SECRET
+  Safe to call repeatedly — every event row uses NotificationLog with
+  a (userId, type, refKey) unique constraint so re-runs are idempotent.
+
+
+┌──────────────────────────────────────────────────────────────────────┐
+│  PER-USER PREFERENCES                                                │
+└──────────────────────────────────────────────────────────────────────┘
+
+  Parents → /parent/settings/notifications
+      • Email me after every quiz (default OFF)
+      • Weekly digest (default ON)
+      • Alert when a score is below %  (default 60)
+      • Alert when no practice for N days  (default 7)
+
+  Tutors  → use the same NotificationSettings row. The weekly digest
+            toggle controls the tutor digest too. (A tutor-specific UI
+            panel can come later — schema already supports it.)
+
+
+┌──────────────────────────────────────────────────────────────────────┐
+│  DEMO HOOKS                                                          │
+└──────────────────────────────────────────────────────────────────────┘
+
+   1. Sign up a brand-new parent → console prints the verification
+      preview URL → click it → second email lands: the welcome.
+   2. As admin, create a new tutor via "+ New user" → welcome email
+      fires immediately (auto-verified path).
+   3. As admin, assign that tutor to Ben (G6) → tutor gets a "you've
+      been assigned" email; parent gets a "Ben now has a tutor" email.
+   4. As that student, finish a quiz → tutor + student get the
+      completion email; parent gets it too if they opted in.
+   5. As admin, suspend the parent → parent gets a security notice.
+      Unsuspend → second notice.
+   6. As that parent, change your password → security notice.
+   7. As that parent, change your email → verification to NEW + a
+      security notice to OLD.

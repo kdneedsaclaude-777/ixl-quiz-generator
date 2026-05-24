@@ -1,0 +1,390 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// =====================================================================
+// Auth + roles (NextAuth v4 + Prisma adapter conventions)
+// =====================================================================
+
+// Tenant boundary. Every parent/tutor/orgadmin/student belongs to exactly
+// one Organization. The platform `superadmin` has orgId = null and sees all
+// orgs.
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  users     User[]
+  students  Student[]
+}
+
+model User {
+  id                   String                @id @default(cuid())
+  email                String                @unique
+  name                 String
+  passwordHash         String?
+  // 'student' | 'parent' | 'tutor' | 'orgadmin' | 'superadmin'
+  role                 String                @default("parent")
+  orgId                String?
+  organization         Organization?         @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  emailVerified        DateTime?
+  // Optional secondary channel; verified separately via SMS code (see
+  // PhoneVerification). E.164 format, nullable.
+  phone                String?
+  phoneVerified        DateTime?
+  suspendedAt          DateTime?
+  deletedAt            DateTime?
+  darkMode             Boolean               @default(false)
+  lastLoginAt          DateTime?
+  createdAt            DateTime              @default(now())
+
+  students             Student[]             @relation("ParentStudents")
+  studentProfile       Student?              @relation("StudentAccount")
+  tutorAssignments     TutorAssignment[]     @relation("TutorLink")
+  notificationSettings NotificationSettings?
+  accounts             Account[]
+  sessions             Session[]
+  passwordResetTokens  PasswordResetToken[]
+  phoneVerification    PhoneVerification?
+  auditEntries         AuditLog[]            @relation("AuditActor")
+
+  @@index([orgId])
+  @@index([role])
+}
+
+// Links a tutor (User role=tutor) to a student they oversee. Assignment is
+// performed by an org-admin or superadmin.
+model TutorAssignment {
+  id        String   @id @default(cuid())
+  tutorId   String
+  tutor     User     @relation("TutorLink", fields: [tutorId], references: [id], onDelete: Cascade)
+  studentId Int
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([tutorId, studentId])
+  @@index([studentId])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// One pending phone-verification per user — re-requesting overwrites the
+// previous code. Phone is captured here so a number change can't be activated
+// by a stale code issued for the old number.
+model PhoneVerification {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phone     String
+  code      String   // 6-digit; short TTL + attempt cap make hashing unnecessary
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+// =====================================================================
+// Curriculum + students
+// =====================================================================
+
+model Student {
+  id                Int                      @id @default(autoincrement())
+  name              String
+  grade             Int
+  currentDifficulty Int                      @default(1)
+  tutorApproved     Boolean                  @default(true)
+  orgId             String?
+  organization      Organization?            @relation(fields: [orgId], references: [id], onDelete: SetNull)
+  parentId          String?
+  parent            User?                    @relation("ParentStudents", fields: [parentId], references: [id], onDelete: SetNull)
+  // The student's own login account (User role=student). Null if the student
+  // is purely parent-managed and has no direct login yet.
+  userId            String?                  @unique
+  account           User?                    @relation("StudentAccount", fields: [userId], references: [id], onDelete: SetNull)
+  xp                Int                      @default(0)
+  level             Int                      @default(1)
+  createdAt         DateTime                 @default(now())
+  topicSelections   StudentTopicSelection[]
+  quizzes           Quiz[]
+  attempts          Attempt[]
+  conceptMastery    ConceptMastery[]
+  parentalSettings  ParentalSettings?
+  earnedBadges      StudentBadge[]
+  xpLog             XPLog[]
+  tutorAssignments  TutorAssignment[]
+
+  @@index([orgId])
+  @@index([parentId])
+}
+
+model TopicGroup {
+  id              Int                      @id @default(autoincrement())
+  gradeLevel      Int
+  letter          String
+  name            String
+  active          Boolean                  @default(true)
+  skills          Skill[]
+  studentSelected StudentTopicSelection[]
+
+  @@unique([gradeLevel, letter])
+}
+
+model Skill {
+  id           Int             @id @default(autoincrement())
+  topicGroupId Int
+  topicGroup   TopicGroup      @relation(fields: [topicGroupId], references: [id])
+  code         String
+  number       Int
+  name         String
+  active       Boolean         @default(true)
+  questions    Question[]
+  mastery      ConceptMastery[]
+
+  @@unique([topicGroupId, number])
+}
+
+model StudentTopicSelection {
+  id           Int        @id @default(autoincrement())
+  studentId    Int
+  student      Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  topicGroupId Int
+  topicGroup   TopicGroup @relation(fields: [topicGroupId], references: [id])
+
+  @@unique([studentId, topicGroupId])
+}
+
+model Quiz {
+  id          Int        @id @default(autoincrement())
+  studentId   Int
+  student     Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  status      String     @default("active")
+  score       Float?
+  difficulty  Int
+  startedAt   DateTime   @default(now())
+  createdAt   DateTime   @default(now())
+  completedAt DateTime?
+  questions   Question[]
+}
+
+model Question {
+  id                  Int       @id @default(autoincrement())
+  quizId              Int
+  quiz                Quiz      @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  skillId             Int
+  skill               Skill     @relation(fields: [skillId], references: [id])
+  position            Int
+  difficulty          Int
+  questionType        String
+  questionStyle       String
+  questionText        String
+  answerOptionsJson   String
+  correctAnswer       String
+  displayLabel        String
+  learningObjective   String
+  conceptTagsJson     String
+  explanationJson     String
+  needsVisual         Boolean   @default(false)
+  visualNote          String?
+  visualSvg           String?
+  toneGrade           Int
+  estimatedComplexity String
+  weakSkillTargeted   Boolean   @default(false)
+  remediationFlag     Boolean   @default(false)
+  needsReview         Boolean   @default(false)
+  attempts            Attempt[]
+}
+
+model Attempt {
+  id             Int      @id @default(autoincrement())
+  questionId     Int
+  question       Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  studentId      Int
+  student        Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  selectedAnswer String
+  isCorrect      Boolean
+  createdAt      DateTime @default(now())
+}
+
+model ConceptMastery {
+  id                 Int      @id @default(autoincrement())
+  studentId          Int
+  student            Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  skillId            Int
+  skill              Skill    @relation(fields: [skillId], references: [id])
+  consecutiveCorrect Int      @default(0)
+  totalAttempts      Int      @default(0)
+  totalCorrect       Int      @default(0)
+  failedQuizzes      Int      @default(0)
+  remediationFlag    Boolean  @default(false)
+  lastDifficulty     Int      @default(1)
+  lastQuizScore      Float?
+  progressionNote    String?
+  updatedAt          DateTime @updatedAt @default(now())
+
+  @@unique([studentId, skillId])
+}
+
+model VideoResource {
+  id               Int      @id @default(autoincrement())
+  subject          String
+  gradeMin         Int
+  gradeMax         Int
+  topicGroupLetter String
+  skillCode        String?
+  title            String
+  provider         String
+  url              String
+  description      String
+  qualityScore     Int      @default(5)
+  createdAt        DateTime @default(now())
+
+  @@index([subject, gradeMin, gradeMax])
+  @@index([topicGroupLetter])
+}
+
+// =====================================================================
+// Parental controls + notifications
+// =====================================================================
+
+model ParentalSettings {
+  studentId           Int      @id
+  student             Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  maxQuizzesPerDay    Int?
+  windowStart         String?  // "16:00" — wall-clock in windowTimezone
+  windowEnd           String?  // "20:00" — wall-clock in windowTimezone
+  // IANA timezone the window times are expressed in (e.g. "America/New_York").
+  // Captured from the parent's browser on save; null on legacy rows.
+  windowTimezone      String?
+  lockedTopicGroupIds String   @default("[]") // JSON array of TopicGroup ids
+  updatedAt           DateTime @updatedAt
+}
+
+model NotificationSettings {
+  userId              String  @id
+  user                User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailEveryQuiz      Boolean @default(false)
+  weeklyDigest        Boolean @default(true)
+  alertBelowScorePct  Int?    @default(60)
+  alertNoPracticeDays Int?    @default(7)
+}
+
+// Dedupe ledger so a quiz-completion email, weekly digest, or inactivity
+// alert is sent at most once per (recipient, type, period/ref). Keeps the
+// scheduler idempotent if it's invoked more than once in a window.
+model NotificationLog {
+  id     String   @id @default(cuid())
+  userId String
+  type   String // 'quiz_completed' | 'low_score' | 'weekly_digest' | 'inactivity'
+  refKey String // quizId, ISO-week, or date bucket depending on type
+  sentAt DateTime @default(now())
+
+  @@unique([userId, type, refKey])
+  @@index([userId])
+}
+
+// =====================================================================
+// Gamification
+// =====================================================================
+
+model Badge {
+  code        String         @id
+  name        String
+  description String
+  icon        String
+  earned      StudentBadge[]
+}
+
+model StudentBadge {
+  id        String   @id @default(cuid())
+  studentId Int
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  badgeCode String
+  badge     Badge    @relation(fields: [badgeCode], references: [code])
+  earnedAt  DateTime @default(now())
+  context   String?  // JSON
+
+  @@unique([studentId, badgeCode])
+}
+
+model XPLog {
+  id        String   @id @default(cuid())
+  studentId Int
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  delta     Int
+  reason    String
+  createdAt DateTime @default(now())
+
+  @@index([studentId])
+}
+
+// =====================================================================
+// Admin: feature flags + audit log
+// =====================================================================
+
+model FeatureFlag {
+  key       String   @id
+  enabled   Boolean  @default(true)
+  value     String?
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String
+  actor      User     @relation("AuditActor", fields: [actorId], references: [id])
+  action     String
+  targetType String
+  targetId   String
+  metadata   String?  // JSON
+  createdAt  DateTime @default(now())
+
+  @@index([actorId])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}

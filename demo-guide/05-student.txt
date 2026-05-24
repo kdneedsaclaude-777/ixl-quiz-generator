@@ -1,0 +1,85 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║                                                                      ║
+║         STUDENT  —  perspective                                      ║
+║                                                                      ║
+║         "Big buttons. Fast feedback. Confetti when I get 100."       ║
+║                                                                      ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+  Email A:   ada@demo.local      Password: Student1234!     Grade 2
+  Email B:   ben@demo.local      Password: Student1234!     Grade 6
+  Lands on:  /child/home
+  Theme:     Fixed light, bright kid panel — no sidebar, big touch
+             targets. Header shows avatar + XP bar + streak.
+
+
+┌──────────────────────────────────────────────────────────────────────┐
+│  WHAT THEY SEE                                                       │
+└──────────────────────────────────────────────────────────────────────┘
+
+  /child/home          The home page
+      • Big "Start practice" button — the only call to action.
+      • XP bar with level number (xpToLevel curve).
+      • Streak counter (consecutive practice days).
+      • Last 3 badges they earned.
+      • Last quiz card with quick "Take another" link.
+      • Time-lock screen if outside the parental window — friendly
+        copy, shows when they can come back.
+
+  /child/quiz/[quizId]    The quiz itself
+      • One question at a time. No "skip", no "submit-all-at-end".
+      • Big colorful answer buttons sized for tablet thumbs.
+      • Immediate animated feedback after each tap
+        (green check / red shake) with the why-wrong explanation.
+      • Progress dots at the top show how many questions remain.
+      • No timer by default (controlled by a feature flag).
+
+  /child/quiz/[quizId]/results    The reveal screen
+      • Animated score number counts up to the final percentage.
+      • XP earned this round (score × 10).
+      • Any new badges unlock with a popping animation:
+          ◆ First Quiz
+          ◆ Perfect Score
+          ◆ Topic Master [X] — 3 perfects on the same topic
+          ◆ Speed Demon — finished in under 3 minutes
+          ◆ Comeback Kid — prior <40% on a topic, now >80%
+          ◆ Streak ×N — N consecutive practice days
+          ◆ Level Up — crossed an XP threshold
+      • CTA back to home, or "Practice again".
+
+  /child/progress       Their own dashboard
+      • Score trend chart over time (their own version of the
+        parent's chart — clickable points jump to that quiz's reveal).
+      • All badges grid — earned ones lit, unearned ones dim.
+      • Per-topic mastery bar (which skills are strong / weak).
+
+  /child/account        Their own settings
+      • Add or verify a phone number (Twilio dev fallback prints code
+        to console).
+      • Request a password reset email.
+      • No way to change role, email, or delete account from here —
+        the parent or admin does that.
+
+
+┌──────────────────────────────────────────────────────────────────────┐
+│  ALSO REACHABLE                                                      │
+└──────────────────────────────────────────────────────────────────────┘
+
+  /child/select       "Who's watching?" picker — when a parent shares
+                      the device and has multiple kids, picking sets
+                      activeChildId on the JWT.
+
+  /live/<CODE>        Joins a Live Quiz session (also reachable from
+                      /live/join with manual entry). No login required.
+
+
+┌──────────────────────────────────────────────────────────────────────┐
+│  DEMO HOOKS                                                          │
+└──────────────────────────────────────────────────────────────────────┘
+
+   1. Log in ada@demo.local. Hit "Start practice".
+   2. Tap through 5 questions — feel the per-question feedback.
+   3. Land on results screen → watch the score count up + badge unlock.
+   4. Click "📈 My Progress" → trend chart with new dot at the right.
+   5. (To trigger Perfect Score) — answer all 5 correctly. Trigger
+      Speed Demon by going fast.

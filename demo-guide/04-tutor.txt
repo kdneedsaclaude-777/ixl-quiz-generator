@@ -1,0 +1,78 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║                                                                      ║
+║         TUTOR  —  perspective                                        ║
+║                                                                      ║
+║         "I only see the kids I'm assigned. I can run live quizzes."  ║
+║                                                                      ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+  Email:     tutor@demo.local
+  Password:  Tutor1234!
+  Lands on:  /tutor/dashboard
+  Assigned:  Ben (G6) and Ben #2 (G2)
+  Theme:     Tutor-flavored sidebar (lighter than admin, calmer than parent)
+
+
+┌──────────────────────────────────────────────────────────────────────┐
+│  WHAT THEY SEE                                                       │
+└──────────────────────────────────────────────────────────────────────┘
+
+  /tutor/dashboard
+      • Cohort header: number of assigned kids, week activity, average
+        cohort score.
+      • Cards per assigned student: name, grade, level, last-active,
+        most-recent-quiz score with traffic-light color.
+      • Quick links into each student's detail page.
+
+  /tutor/students
+      • Table view of the same assigned kids — sortable, searchable
+        within the cohort.
+
+  /tutor/student/[studentId]
+      • Read-only mirror of the parent's child page:
+          – Score trend chart (clickable points → quiz results)
+          – Quiz history table
+          – Weak topics panel
+          – Concept-mastery summary
+      • Tutor notes panel (private to the tutor).
+      • CSV / PDF export for tutor's own records.
+
+
+┌──────────────────────────────────────────────────────────────────────┐
+│  LIVE QUIZ HOSTING                                                   │
+└──────────────────────────────────────────────────────────────────────┘
+
+  /live/host
+      • Pick a topic group + difficulty, click "Create session".
+      • Get a 4-letter code, e.g. "PLAY". Show the QR code on screen.
+      • Kids on the same Wi-Fi visit /live/<CODE> on their phones and
+        type their name to join — no account required.
+      • Real-time presence dot per joined player (SSE-backed, with an
+        8-second grace period before marking someone offline).
+      • Host controls: launch question → countdown → reveal answers →
+        next question → end session.
+      • Live leaderboard with animated score bumps.
+      • Kick a player (admin action — audit-logged).
+
+
+┌──────────────────────────────────────────────────────────────────────┐
+│  TUTOR CAN'T                                                         │
+└──────────────────────────────────────────────────────────────────────┘
+
+   ✗ See kids they're not assigned to (even within their own org).
+   ✗ Edit parental controls — those belong to the parent.
+   ✗ Delete a student account.
+   ✗ Open /admin/* — not their role.
+
+
+┌──────────────────────────────────────────────────────────────────────┐
+│  DEMO HOOK                                                           │
+└──────────────────────────────────────────────────────────────────────┘
+
+   1. Log in tutor@demo.local in browser A.
+   2. Open /live/host → "Create session" → get code, e.g. "QUIZ".
+   3. On phone (same Wi-Fi) open http://192.168.2.10:3000/live/QUIZ
+      → type a name → join.
+   4. Host clicks "Start". Countdown plays on every device in sync.
+      Phone taps an answer → score bumps live on host leaderboard.
+   5. End the session → tutor sees session recap.

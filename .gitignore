@@ -1,0 +1,15 @@
+node_modules
+.next
+.env
+.env.local
+LOGINS.txt
+tsconfig.tsbuildinfo
+prisma/dev.db
+prisma/dev.db-journal
+prisma/test.db
+prisma/test.db-journal
+*.log
+.DS_Store
+/test-results
+/playwright-report
+/playwright/.cache
