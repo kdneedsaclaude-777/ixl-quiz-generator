@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { generateToken, verificationExpiry } from "@/lib/tokens";
 import { sendEmail, buildAppUrl } from "@/lib/email";
+import { renderEmail } from "@/lib/emailTemplate";
 import { enforceRateLimit } from "@/lib/rate-limit";
 
 type Body = { email?: string };
@@ -36,11 +37,18 @@ export async function POST(req: Request): Promise<Response> {
     data: { identifier: email, token, expires: verificationExpiry() },
   });
   const link = buildAppUrl(`/auth/verify-email?token=${token}`);
+  const { html, text } = renderEmail({
+    preheader: "A fresh verification link, as requested.",
+    heading: "Verify your email",
+    body: "Here's a new link to confirm this email on your QuizSpark account.",
+    cta: { label: "Verify email", url: link },
+    footnote: "The link expires in 24 hours. If you didn't ask for this, you can ignore the email.",
+  });
   await sendEmail({
     to: email,
-    subject: "Verify your IXL Quiz email",
-    text: `Click to verify your email: ${link}`,
-    html: `<p>Click to verify your email:</p><p><a href="${link}">${link}</a></p>`,
+    subject: "Verify your QuizSpark email",
+    text,
+    html,
   });
   return NextResponse.json({ ok: true });
 }

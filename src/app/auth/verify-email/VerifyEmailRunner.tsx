@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import CMIcon from "@/components/CMIcon";
 
 type State = { status: "pending" | "ok" | "error"; message?: string };
 
@@ -34,18 +35,42 @@ export default function VerifyEmailRunner({ token }: { token: string }) {
   }, [token]);
 
   if (state.status === "pending") {
-    return <p className="text-sm text-slate-600 dark:text-slate-400">Verifying your email…</p>;
+    return (
+      <div className="flex items-center gap-3 rounded-2xl border border-cm-blue-100 bg-cm-blue-50 p-5 dark:border-slate-600 dark:bg-slate-700/40">
+        <span
+          className="h-5 w-5 animate-spin rounded-full border-2 border-cm-blue/30 border-t-cm-blue"
+          aria-hidden
+        />
+        <p className="text-sm font-medium text-cm-blue dark:text-slate-200">Verifying your email…</p>
+      </div>
+    );
   }
   if (state.status === "ok") {
     return (
-      <p className="rounded bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
-        ✓ {state.message}
-      </p>
+      <div className="rounded-2xl border border-cm-mint/40 bg-cm-mint-soft p-5 dark:border-emerald-800 dark:bg-emerald-950/40">
+        <span className="grid h-11 w-11 place-items-center rounded-xl" style={{ background: "var(--cm-mint)" }}>
+          <CMIcon name="check" size={22} color="#fff" stroke={2.25} />
+        </span>
+        <p className="mt-3 font-display text-2xl leading-tight text-slate-900 dark:text-emerald-50">
+          You&apos;re verified.
+        </p>
+        <p className="mt-1 text-sm text-slate-600 dark:text-emerald-200">{state.message}</p>
+        <a href="/auth/login" className="cm-btn primary mt-4 w-full">
+          Go to login
+          <CMIcon name="arrow" size={18} color="#fff" />
+        </a>
+      </div>
     );
   }
   return (
-    <p className="rounded bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-950 dark:text-rose-200">
-      {state.message ?? "Verification failed."}
-    </p>
+    <div className="rounded-2xl border border-cm-red-soft bg-cm-red-soft/60 p-5 dark:border-rose-800 dark:bg-rose-950/40">
+      <span className="cm-pill coral">
+        <CMIcon name="x" size={14} color="currentColor" />
+        Verification failed
+      </span>
+      <p className="mt-2 text-sm text-slate-700 dark:text-rose-200">
+        {state.message ?? "Verification failed."}
+      </p>
+    </div>
   );
 }

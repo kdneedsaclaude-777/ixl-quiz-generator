@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { runScheduledNotifications } from "@/lib/notifications";
 import { enforceRateLimit } from "@/lib/rate-limit";
 
-// Scheduled notification dispatch: weekly digests + inactivity alerts.
+// Scheduled notification dispatch: weekly digests + inactivity alerts +
+// streak-risk reminders + tutor digests.
 // Idempotent (deduped via NotificationLog) so it's safe to call repeatedly.
 //
 // Protected by CRON_SECRET. In Phase 9 this is wired to a real cron/webhook;

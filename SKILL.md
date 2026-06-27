@@ -12,7 +12,7 @@ description: >
   without it.
 ---
 
-# IXL Quiz Generator
+# Concept Mastery Quiz Generator
 
 Adaptive, curriculum-exact quiz questions for Grades 4–8 Math. Mirrors IXL
 Ontario skill codes precisely. Questions adapt to each student's weak points,

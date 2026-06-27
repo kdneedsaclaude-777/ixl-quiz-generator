@@ -52,7 +52,7 @@ export default async function AdminSettingsPage() {
   return (
     <main className="space-y-8">
       <header>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">System settings</h1>
+        <h1 className="font-display text-4xl leading-tight tracking-tight text-slate-900 dark:text-slate-100">System settings</h1>
       </header>
 
       <section className="rounded-lg border border-slate-700 bg-slate-800 p-6">
@@ -77,7 +77,7 @@ export default async function AdminSettingsPage() {
         <p className="mt-1 text-sm text-slate-400">App name and tagline shown across the public surface.</p>
         <AppSettingsForm
           initial={{
-            appName: appName?.value ?? "IXL Quiz App",
+            appName: appName?.value ?? "QuizSpark",
             appTagline: appTagline?.value ?? "",
           }}
         />
@@ -143,6 +143,7 @@ function SmtpRow({ label, value }: { label: string; value: string }) {
 function describeFlag(key: string): string {
   const map: Record<string, string> = {
     gamification: "Award XP + badges on quiz submit",
+    leaderboard: "Weekly XP leaderboard (family + tutor cohort)",
     timer: "Allow per-question countdown timer",
     dark_mode: "Allow users to toggle dark theme",
     diagnostic_quiz: "Show 3-question diagnostic in onboarding",

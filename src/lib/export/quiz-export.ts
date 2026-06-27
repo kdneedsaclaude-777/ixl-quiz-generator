@@ -157,7 +157,7 @@ export function quizToPdf(d: QuizExportData): Promise<Buffer> {
 
 export async function quizToXlsx(d: QuizExportData): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
-  wb.creator = "IXL Quiz App";
+  wb.creator = "QuizSpark";
   const ws = wb.addWorksheet(`Quiz ${d.quizId}`);
 
   ws.addRow([`Quiz #${d.quizId} — ${d.withAnswers ? "Report" : "Worksheet"}`]);

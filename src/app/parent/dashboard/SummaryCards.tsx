@@ -1,23 +1,28 @@
 type Summary = {
   childCount: number;
-  weekQuizzes: number;
-  weekAvgScore: number | null;
-  hardestTopic: { letter: string; name: string; accuracy: number } | null;
+  // Most recent completed-quiz score across all children (client asked to
+  // replace the weekly average with the last quiz score).
+  lastQuizScore: number | null;
+  // Total quizzes generated across all children (attempted).
+  quizzesAttempted: number;
+  // Completed (submitted) vs generated-but-not-completed.
+  submitted: number;
+  notSubmitted: number;
 };
 
 export default function SummaryCards({ s }: { s: Summary }) {
   return (
     <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       <Card label="Children" value={s.childCount.toString()} />
-      <Card label="Quizzes this week" value={s.weekQuizzes.toString()} />
       <Card
-        label="Avg score this week"
-        value={s.weekAvgScore !== null ? `${Math.round(s.weekAvgScore)}%` : "—"}
+        label="Last quiz score"
+        value={s.lastQuizScore !== null ? `${Math.round(s.lastQuizScore)}%` : "—"}
       />
+      <Card label="Quizzes attempted" value={s.quizzesAttempted.toString()} />
       <Card
-        label="Hardest topic"
-        value={s.hardestTopic ? `${Math.round(s.hardestTopic.accuracy * 100)}%` : "—"}
-        hint={s.hardestTopic?.name ?? "No data yet"}
+        label="Submitted / not"
+        value={`${s.submitted} / ${s.notSubmitted}`}
+        hint={`${s.submitted} submitted · ${s.notSubmitted} not submitted`}
       />
     </section>
   );

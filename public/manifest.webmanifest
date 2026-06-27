@@ -1,0 +1,16 @@
+{
+  "name": "QuizSpark",
+  "short_name": "QuizSpark",
+  "description": "Adaptive math quizzes for Grades 1–8, by Concept Mastery.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FAFAF7",
+  "theme_color": "#5C7BAE",
+  "categories": ["education", "kids"],
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

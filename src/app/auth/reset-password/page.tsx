@@ -2,7 +2,7 @@ import Link from "next/link";
 import AuthCard from "../AuthCard";
 import ResetForm from "./ResetForm";
 
-export const metadata = { title: "Set new password — IXL Quiz" };
+export const metadata = { title: "Set new password — QuizSpark" };
 
 export default async function ResetPage({
   searchParams,
@@ -15,7 +15,7 @@ export default async function ResetPage({
       title="Set a new password"
       footer={
         <span>
-          <Link href="/auth/login" className="font-medium text-indigo-600 hover:underline dark:text-indigo-400">Back to login</Link>
+          <Link href="/auth/login" className="font-medium text-cm-blue hover:underline">Back to login</Link>
         </span>
       }
     >

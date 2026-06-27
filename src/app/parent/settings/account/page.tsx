@@ -23,39 +23,27 @@ export default async function AccountPage() {
   if (!user) return null;
 
   return (
-    <main className="space-y-8">
-      <header>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Account</h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-          Manage your name, email, and password.
-        </p>
+    <main className="mx-auto max-w-2xl space-y-6">
+      <header className="flex items-end justify-between gap-3 pt-1">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-cm-blue">Settings</div>
+          <h1 className="font-display text-4xl leading-tight tracking-tight text-slate-900 dark:text-slate-100">Account</h1>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+            Manage your name, email, and password.
+          </p>
+        </div>
       </header>
 
-      <section>
-        <h2 className="font-semibold text-slate-900 dark:text-slate-100">Profile</h2>
-        <ProfileForm initial={{ name: user.name, email: user.email, emailVerified: Boolean(user.emailVerified) }} />
-      </section>
+      <ProfileForm initial={{ name: user.name, email: user.email, emailVerified: Boolean(user.emailVerified) }} />
 
-      <section>
-        <h2 className="font-semibold text-slate-900 dark:text-slate-100">Phone (optional)</h2>
-        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-          Add a verified phone number as a second contact channel.
-        </p>
-        <PhoneForm
-          initialPhone={user.phone}
-          initialVerified={Boolean(user.phoneVerified)}
-        />
-      </section>
+      <PhoneForm
+        initialPhone={user.phone}
+        initialVerified={Boolean(user.phoneVerified)}
+      />
 
-      <section>
-        <h2 className="font-semibold text-slate-900 dark:text-slate-100">Password</h2>
-        <PasswordForm />
-      </section>
+      <PasswordForm />
 
-      <section>
-        <h2 className="font-semibold text-rose-700 dark:text-rose-400">Danger zone</h2>
-        <DeleteAccountForm />
-      </section>
+      <DeleteAccountForm />
     </main>
   );
 }

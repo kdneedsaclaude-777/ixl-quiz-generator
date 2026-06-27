@@ -21,9 +21,6 @@ export default function ParentalControlsForm({
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
-  const [maxPerDay, setMaxPerDay] = useState<string>(
-    initial.maxQuizzesPerDay !== null ? String(initial.maxQuizzesPerDay) : "",
-  );
   const [windowStart, setWindowStart] = useState(initial.windowStart);
   const [windowEnd, setWindowEnd] = useState(initial.windowEnd);
   const [locked, setLocked] = useState<Set<number>>(new Set(initial.lockedTopicGroupIds));
@@ -50,7 +47,6 @@ export default function ParentalControlsForm({
     setSaving(true);
     try {
       const body = {
-        maxQuizzesPerDay: maxPerDay === "" ? null : Math.max(1, Math.min(20, parseInt(maxPerDay, 10))),
         windowStart: windowStart || null,
         windowEnd: windowEnd || null,
         // Capture the browser's IANA timezone so the server enforces the
@@ -75,27 +71,14 @@ export default function ParentalControlsForm({
   }
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-600 dark:bg-slate-800/80">
-      <h2 className="font-semibold text-slate-900 dark:text-slate-100">Parental controls</h2>
-      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+    <section className="cm-card p-[18px]">
+      <h3 className="text-[15px] font-bold text-slate-900">Parental controls</h3>
+      <p className="mt-1 text-xs text-slate-500">
         Limits apply to quiz generation. Empty fields mean &ldquo;no limit&rdquo;.
       </p>
 
       <form onSubmit={onSubmit} className="mt-4 space-y-5">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div>
-            <label htmlFor="max" className="block text-sm font-medium text-slate-900 dark:text-slate-100">Max quizzes per day</label>
-            <input
-              id="max"
-              type="number"
-              min={1}
-              max={20}
-              placeholder="Unlimited"
-              value={maxPerDay}
-              onChange={(e) => setMaxPerDay(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-500 dark:bg-slate-700 dark:text-white"
-            />
-          </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="ws" className="block text-sm font-medium text-slate-900 dark:text-slate-100">Practice window start</label>
             <input
@@ -148,11 +131,7 @@ export default function ParentalControlsForm({
         {error && <p className="rounded bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-950 dark:text-rose-200">{error}</p>}
         {saved && <p className="rounded bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">Saved.</p>}
 
-        <button
-          type="submit"
-          disabled={saving}
-          className="rounded bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
-        >
+        <button type="submit" disabled={saving} className="cm-btn primary disabled:opacity-50">
           {saving ? "Saving…" : "Save parental controls"}
         </button>
       </form>

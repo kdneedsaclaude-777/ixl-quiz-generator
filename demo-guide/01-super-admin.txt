@@ -6,7 +6,7 @@
 ║                                                                      ║
 ╚══════════════════════════════════════════════════════════════════════╝
 
-  Email:     admin@ixl.local
+  Email:     admin@cm.local
   Password:  Admin1234!
   Lands on:  /admin/dashboard
   Theme:     Dark slate sidebar (admin shell)

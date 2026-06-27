@@ -73,68 +73,71 @@ export default async function AdminQuizzesPage({
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <main className="space-y-6">
+    <main className="space-y-6 text-[color:var(--shell-text)]">
       <header>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Quizzes — drill-down</h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+        <div className="text-xs font-semibold tracking-wide text-[color:var(--shell-muted)]">ACTIVITY</div>
+        <h1 className="font-display mt-1 text-4xl leading-none text-white">Quizzes — drill-down</h1>
+        <p className="mt-1.5 text-sm text-[color:var(--shell-muted)]">
           One row per quiz — not averages. Charts elsewhere link here with filters pre-applied.
         </p>
       </header>
 
       <QuizzesFilters />
 
-      <p className="text-xs text-slate-500 dark:text-slate-400">
+      <p className="text-xs text-[color:var(--shell-muted)]">
         {total} quiz{total === 1 ? "" : "zes"} match
         {gradeFilter ? ` · Grade ${gradeFilter}` : ""}
         {nameFilter ? ` · name contains "${nameFilter}"` : ""}
         {statusFilter !== "completed" ? ` · status: ${statusFilter}` : ""}
-        {dayFilter ? <> · day: {dayFilter} <Link href={buildHref({ gr, q, status: statusFilter })} className="ml-1 underline hover:text-slate-300">clear day</Link></> : null}
+        {dayFilter ? <> · day: {dayFilter} <Link href={buildHref({ gr, q, status: statusFilter })} className="ml-1 text-[#A5B4FC] underline hover:text-white">clear day</Link></> : null}
       </p>
 
-      <div className="overflow-x-auto rounded-lg border border-slate-700 bg-slate-800">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-900/60 text-left text-xs uppercase tracking-wide text-slate-300">
-            <tr>
-              <th className="px-3 py-2">Quiz #</th>
-              <th className="px-3 py-2">Date</th>
-              <th className="px-3 py-2">Student</th>
-              <th className="px-3 py-2 text-center">Grade</th>
-              <th className="px-3 py-2">Status</th>
-              <th className="px-3 py-2 text-right">Score</th>
-              <th className="px-3 py-2 text-center">Difficulty</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-700 text-slate-100">
-            {quizzes.map((q) => {
-              const when = q.completedAt ?? q.createdAt;
-              const scoreText =
-                typeof q.score === "number" ? `${Math.round(q.score)}%` : "—";
-              return (
-                <tr key={q.id}>
-                  <td className="px-3 py-2 font-mono">#{q.id}</td>
-                  <td className="px-3 py-2 text-xs text-slate-300">
-                    {when.toLocaleDateString("en-US")}
-                  </td>
-                  <td className="px-3 py-2">
-                    <Link
-                      href={`/parent/child/${q.student.id}`}
-                      className="font-medium text-indigo-300 hover:underline"
-                    >
-                      {q.student.name}
-                    </Link>
-                  </td>
-                  <td className="px-3 py-2 text-center">G{q.student.grade}</td>
-                  <td className="px-3 py-2 text-xs text-slate-300">{q.status}</td>
-                  <td className="px-3 py-2 text-right font-semibold">{scoreText}</td>
-                  <td className="px-3 py-2 text-center">L{q.difficulty}</td>
-                </tr>
-              );
-            })}
-            {quizzes.length === 0 && (
-              <tr><td colSpan={7} className="px-3 py-8 text-center text-slate-400">No quizzes match those filters.</td></tr>
-            )}
-          </tbody>
-        </table>
+      <div className="overflow-x-auto rounded-2xl border" style={{ background: "var(--shell-card)", borderColor: "var(--shell-border)" }}>
+        <div className="min-w-[680px]">
+          <div
+            className="grid items-center gap-2.5 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-[color:var(--shell-muted)]"
+            style={{ gridTemplateColumns: "80px 90px 1.6fr 70px 110px 80px 90px", borderBottom: "1px solid var(--shell-border)" }}
+          >
+            <span>Quiz #</span>
+            <span>Date</span>
+            <span>Student</span>
+            <span className="text-center">Grade</span>
+            <span>Status</span>
+            <span className="text-right">Score</span>
+            <span className="text-center">Difficulty</span>
+          </div>
+          {quizzes.map((q) => {
+            const when = q.completedAt ?? q.createdAt;
+            const score = typeof q.score === "number" ? Math.round(q.score) : null;
+            return (
+              <div
+                key={q.id}
+                className="grid items-center gap-2.5 px-4 py-3 text-sm"
+                style={{ gridTemplateColumns: "80px 90px 1.6fr 70px 110px 80px 90px", borderBottom: "1px solid var(--shell-border)" }}
+              >
+                <span className="font-mono text-[color:var(--shell-muted)]">#{q.id}</span>
+                <span className="text-xs text-[color:var(--shell-muted)]">{when.toLocaleDateString("en-US")}</span>
+                <Link href={`/parent/child/${q.student.id}`} className="font-semibold text-[#A5B4FC] hover:underline">
+                  {q.student.name}
+                </Link>
+                <span className="text-center font-mono text-xs">G{q.student.grade}</span>
+                <span>
+                  <span className={q.status === "completed" ? "cm-pill mint" : "cm-pill"} style={{ height: 22, fontSize: 11 }}>{q.status}</span>
+                </span>
+                <span
+                  className="text-right font-display text-lg"
+                  style={{ color: score === null ? "var(--shell-muted)" : score >= 80 ? "var(--cm-mint)" : score >= 70 ? "#A5B4FC" : "var(--cm-gold)" }}
+                >
+                  {score === null ? "—" : `${score}%`}
+                </span>
+                <span className="text-center font-mono text-xs">L{q.difficulty}</span>
+              </div>
+            );
+          })}
+          {quizzes.length === 0 && (
+            <div className="px-4 py-8 text-center text-sm text-[color:var(--shell-muted)]">No quizzes match those filters.</div>
+          )}
+        </div>
       </div>
 
       {totalPages > 1 && (
@@ -144,7 +147,7 @@ export default async function AdminQuizzesPage({
               page={page - 1} gr={gr} q={q} status={statusFilter} day={dayFilter ?? undefined}
             >← Prev</PageLink>
           )}
-          <span className="text-slate-400">page {page} of {totalPages}</span>
+          <span className="text-[color:var(--shell-muted)]">page {page} of {totalPages}</span>
           {page < totalPages && (
             <PageLink
               page={page + 1} gr={gr} q={q} status={statusFilter} day={dayFilter ?? undefined}
@@ -175,7 +178,7 @@ function PageLink({
   return (
     <Link
       href={buildHref({ page, gr, q, status, day })}
-      className="rounded border border-slate-600 bg-slate-700 px-3 py-1 text-slate-100 hover:bg-slate-600"
+      className="rounded-full border border-[color:var(--shell-border)] bg-white/5 px-3.5 py-1 text-[color:var(--shell-text)] hover:bg-white/10"
     >
       {children}
     </Link>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { generateToken, passwordResetExpiry } from "@/lib/tokens";
 import { sendEmail, buildAppUrl } from "@/lib/email";
+import { renderEmail } from "@/lib/emailTemplate";
 import { enforceRateLimit } from "@/lib/rate-limit";
 
 type Body = { email?: string };
@@ -24,11 +25,18 @@ export async function POST(req: Request): Promise<Response> {
     data: { userId: user.id, token, expiresAt: passwordResetExpiry() },
   });
   const link = buildAppUrl(`/auth/reset-password?token=${token}`);
+  const { html, text } = renderEmail({
+    preheader: "Reset your QuizSpark password.",
+    heading: "Reset your password",
+    body: "Someone asked to reset the password on this QuizSpark account. Tap the button below to choose a new one.",
+    cta: { label: "Reset password", url: link },
+    footnote: "The link expires in 1 hour. If you didn't ask for this, you can safely ignore this email — your password won't change.",
+  });
   await sendEmail({
     to: email,
-    subject: "Reset your IXL Quiz password",
-    text: `Click to reset your password (expires in 1 hour): ${link}`,
-    html: `<p>Click to reset your password (expires in 1 hour):</p><p><a href="${link}">${link}</a></p>`,
+    subject: "Reset your QuizSpark password",
+    text,
+    html,
   });
   return NextResponse.json({ ok: true });
 }

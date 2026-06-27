@@ -3,7 +3,6 @@ import { prisma } from "@/lib/db";
 import { getParentForApi } from "@/lib/auth/server";
 
 type Body = {
-  maxQuizzesPerDay?: number | null;
   windowStart?: string | null;
   windowEnd?: string | null;
   windowTimezone?: string | null;
@@ -42,12 +41,6 @@ export async function PATCH(
 
   const body = (await req.json().catch(() => ({}))) as Body;
 
-  const maxPerDay = body.maxQuizzesPerDay;
-  if (maxPerDay !== null && maxPerDay !== undefined) {
-    if (!Number.isInteger(maxPerDay) || maxPerDay < 1 || maxPerDay > 20) {
-      return NextResponse.json({ error: "Max quizzes per day must be 1–20." }, { status: 400 });
-    }
-  }
   const windowStart = body.windowStart || null;
   const windowEnd = body.windowEnd || null;
   if (windowStart && !HHMM.test(windowStart)) {
@@ -60,8 +53,8 @@ export async function PATCH(
     return NextResponse.json({ error: "Provide both start and end, or neither." }, { status: 400 });
   }
 
-  // The window times are wall-clock — store the timezone they were entered in
-  // so the server enforces them in the parent's time, not its own (UTC).
+  // Window times are wall-clock — store the timezone they were entered in so
+  // the server enforces them in the parent's time, not its own (UTC).
   let windowTimezone: string | null = null;
   if (windowStart && windowEnd) {
     const tz = body.windowTimezone?.trim();
@@ -71,25 +64,26 @@ export async function PATCH(
       }
       windowTimezone = tz;
     }
-    // No tz sent → stored null; the window check falls back to UTC.
   }
 
   const lockedIds = Array.isArray(body.lockedTopicGroupIds)
     ? body.lockedTopicGroupIds.filter((n): n is number => Number.isInteger(n))
     : [];
 
+  // Daily cap removed (unlimited generation) — always store null so any
+  // previously-set cap is cleared. Column kept to avoid a destructive migration.
   await prisma.parentalSettings.upsert({
     where: { studentId },
     create: {
       studentId,
-      maxQuizzesPerDay: maxPerDay ?? null,
+      maxQuizzesPerDay: null,
       windowStart,
       windowEnd,
       windowTimezone,
       lockedTopicGroupIds: JSON.stringify(lockedIds),
     },
     update: {
-      maxQuizzesPerDay: maxPerDay ?? null,
+      maxQuizzesPerDay: null,
       windowStart,
       windowEnd,
       windowTimezone,

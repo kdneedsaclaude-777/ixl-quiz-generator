@@ -7,6 +7,7 @@ type Body = {
   weeklyDigest?: boolean;
   alertBelowScorePct?: number;
   alertNoPracticeDays?: number;
+  streakReminder?: boolean;
 };
 
 export async function PATCH(req: Request): Promise<Response> {
@@ -16,6 +17,7 @@ export async function PATCH(req: Request): Promise<Response> {
   const body = (await req.json().catch(() => ({}))) as Body;
   const score = Math.max(0, Math.min(100, body.alertBelowScorePct ?? 60));
   const days = Math.max(1, Math.min(30, body.alertNoPracticeDays ?? 7));
+  const streakReminder = body.streakReminder ?? true;
 
   await prisma.notificationSettings.upsert({
     where: { userId: auth.parent.userId },
@@ -25,12 +27,14 @@ export async function PATCH(req: Request): Promise<Response> {
       weeklyDigest: !!body.weeklyDigest,
       alertBelowScorePct: score,
       alertNoPracticeDays: days,
+      streakReminder: !!streakReminder,
     },
     update: {
       emailEveryQuiz: !!body.emailEveryQuiz,
       weeklyDigest: !!body.weeklyDigest,
       alertBelowScorePct: score,
       alertNoPracticeDays: days,
+      streakReminder: !!streakReminder,
     },
   });
 

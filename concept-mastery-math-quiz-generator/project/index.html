@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Concept Mastery — Math Quiz Generator · Design</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tokens.css">
+<style>
+  html, body { margin: 0; padding: 0; background: #F6F4EE; }
+  body { font-family: var(--font-ui); color: var(--ink); }
+  .pad-art { padding: 18px; }   /* a touch of inner padding when needed */
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="frames/design-canvas.jsx"></script>
+<script type="text/babel" src="frames/ios-frame.jsx"></script>
+<script type="text/babel" src="frames/browser-window.jsx"></script>
+
+<script type="text/babel" src="screens/icons.jsx"></script>
+<script type="text/babel" src="screens/auth.jsx"></script>
+<script type="text/babel" src="screens/student.jsx"></script>
+<script type="text/babel" src="screens/generator.jsx"></script>
+<script type="text/babel" src="screens/parent.jsx"></script>
+<script type="text/babel" src="screens/tutor.jsx"></script>
+<script type="text/babel" src="screens/admin.jsx"></script>
+<script type="text/babel" src="screens/real-test.jsx"></script>
+<script type="text/babel" src="screens/student-tabs.jsx"></script>
+<script type="text/babel" src="screens/parent-tutor-tabs.jsx"></script>
+<script type="text/babel" src="screens/admin-tabs.jsx"></script>
+
+<script type="text/babel">
+/* iPhone frame is ~402×874; we'll size artboards to match. */
+const PHONE_W = 402, PHONE_H = 874;
+
+function App() {
+  return (
+    <DesignCanvas
+      title="Concept Mastery"
+      subtitle="Math Quiz Generator · IXL Ontario · Grades 1–8 · hi-fi design"
+    >
+      {/* ─── Auth & Onboarding ─── */}
+      <DCSection id="auth" title="01 · Auth &amp; onboarding"
+        subtitle="One sign-in surface for all 4 roles. Students get a kid-friendly avatar + PIN screen so they don't need to type an email.">
+        <DCArtboard id="signin" label="A · Sign-in · Parent tab" width={PHONE_W} height={PHONE_H}>
+          <AuthSignIn role="parent" />
+        </DCArtboard>
+        <DCArtboard id="kidlogin" label="B · Student avatar + PIN" width={PHONE_W} height={PHONE_H}>
+          <AuthKidLogin />
+        </DCArtboard>
+        <DCArtboard id="onboard" label="C · Parent onboarding · Step 2 of 3" width={PHONE_W} height={PHONE_H}>
+          <AuthOnboarding />
+        </DCArtboard>
+      </DCSection>
+
+      {/* ─── Quiz Generator (core ask) ─── */}
+      <DCSection id="gen" title="02 · Quiz generator"
+        subtitle="The heart of the product. Parent/tutor picks topics, count, difficulty, and mode (Real Test vs Practice). Adaptive engine weights by weak skills.">
+        <DCArtboard id="gen-mobile" label="A · Builder · mobile" width={PHONE_W} height={PHONE_H}>
+          <QuizBuilderMobile />
+        </DCArtboard>
+        <DCArtboard id="gen-desktop" label="B · Builder · desktop with live preview" width={1180} height={760}>
+          <QuizBuilderDesktop />
+        </DCArtboard>
+      </DCSection>
+
+      {/* ─── Student flow ─── */}
+      <DCSection id="student" title="03 · Student experience · practice mode"
+        subtitle="Mobile-first. Big touch targets, immediate animated feedback, gamified XP/streaks/badges. Practice mode reveals why a wrong answer is wrong.">
+        <DCArtboard id="s-home" label="A · Home" width={PHONE_W} height={PHONE_H}>
+          <StudentHome />
+        </DCArtboard>
+        <DCArtboard id="s-quiz" label="B · Quiz · question 5/10" width={PHONE_W} height={PHONE_H}>
+          <StudentQuiz />
+        </DCArtboard>
+        <DCArtboard id="s-feedback" label="C · Practice feedback · wrong answer" width={PHONE_W} height={PHONE_H}>
+          <StudentFeedback />
+        </DCArtboard>
+        <DCArtboard id="s-results" label="D · Results · 80% + new badge" width={PHONE_W} height={PHONE_H}>
+          <StudentResults />
+        </DCArtboard>
+      </DCSection>
+
+      {/* ─── REAL TEST flow ─── */}
+      <DCSection id="realtest" title="03.5 · Real Test · what students actually see"
+        subtitle="How a graded test feels different from practice. Restrained white palette, visible timer, no live feedback, question navigator, hard submit, locked answer review until a parent unlocks it.">
+        <DCArtboard id="rt-intake" label="A · Intake · rules &amp; timer warning" width={PHONE_W} height={PHONE_H}>
+          <StudentTestIntake />
+        </DCArtboard>
+        <DCArtboard id="rt-question" label="B · In-test question · Q5/10 · 14:38 left" width={PHONE_W} height={PHONE_H}>
+          <StudentTestQuestion />
+        </DCArtboard>
+        <DCArtboard id="rt-nav" label="C · Question navigator · jump &amp; flag" width={PHONE_W} height={PHONE_H}>
+          <StudentTestNavigator />
+        </DCArtboard>
+        <DCArtboard id="rt-confirm" label="D · Submit confirmation · 2 blank" width={PHONE_W} height={PHONE_H}>
+          <StudentTestSubmitConfirm />
+        </DCArtboard>
+        <DCArtboard id="rt-graded" label="E · Graded · score visible, review locked" width={PHONE_W} height={PHONE_H}>
+          <StudentTestResult />
+        </DCArtboard>
+      </DCSection>
+
+      {/* ─── Parent ─── */}
+      <DCSection id="parent" title="04 · Parent"
+        subtitle="Mobile dashboard for the parent on the go; deep child detail on desktop with trend chart, weak topics, quiz history, and parental controls.">
+        <DCArtboard id="p-mobile" label="A · Family dashboard · mobile" width={PHONE_W} height={PHONE_H}>
+          <ParentDashboardMobile />
+        </DCArtboard>
+        <DCArtboard id="p-detail" label="B · Child detail · desktop" width={1180} height={760}>
+          <ParentChildDetailDesktop />
+        </DCArtboard>
+      </DCSection>
+
+      {/* ─── Tutor ─── */}
+      <DCSection id="tutor" title="05 · Tutor"
+        subtitle="Tutor sees only their assigned cohort. Grade-change approvals show up as a sidebar callout. Live Quiz Host is a kahoot-style real-time mode for the classroom.">
+        <DCArtboard id="t-dash" label="A · Cohort dashboard" width={1180} height={760}>
+          <TutorDashboard />
+        </DCArtboard>
+        <DCArtboard id="t-live" label="B · Live quiz host · code PLAY" width={1180} height={760}>
+          <TutorLiveHost />
+        </DCArtboard>
+      </DCSection>
+
+      {/* ─── Org Admin ─── */}
+      <DCSection id="orgadmin" title="06 · Org admin"
+        subtitle="Org admin runs ONE school. Same dark shell as super admin, but every list is auto-scoped to their org. Can invite parents/tutors, manage classes, and impersonate within the org — but global feature flags are read-only.">
+        <DCArtboard id="oa-dash" label="A · Org dashboard · Demo Academy" width={1180} height={760}>
+          <OrgAdminDashboard />
+        </DCArtboard>
+        <DCArtboard id="oa-members" label="B · Members table · filter, bulk actions" width={1180} height={760}>
+          <OrgAdminMembers />
+        </DCArtboard>
+        <DCArtboard id="oa-imp" label="C · Impersonating a parent · audit banner" width={1180} height={760}>
+          <OrgAdminImpersonating />
+        </DCArtboard>
+      </DCSection>
+
+      {/* ─── Super Admin ─── */}
+      <DCSection id="superadmin" title="07 · Super admin"
+        subtitle="Platform-wide. Cross-org visibility, global feature flags, ability to create other super admins. Distinguished from org admin by the absence of any single-org chip.">
+        <DCArtboard id="sa-dash" label="A · Platform dashboard · all orgs" width={1180} height={760}>
+          <AdminDashboard />
+        </DCArtboard>
+      </DCSection>
+
+      {/* ─── Every tab, every role ─── */}
+      <DCSection id="tabs-student" title="08 · Student · all bottom tabs"
+        subtitle="Four tabs at the foot of the phone. Home is the action hub; the other three are status and identity. Each phone here is the same app, different tab selected.">
+        <DCArtboard id="st-home" label="Tab 1 · Home" width={PHONE_W} height={PHONE_H}>
+          <StudentHome />
+        </DCArtboard>
+        <DCArtboard id="st-progress" label="Tab 2 · Progress" width={PHONE_W} height={PHONE_H}>
+          <StudentProgress />
+        </DCArtboard>
+        <DCArtboard id="st-badges" label="Tab 3 · Badges" width={PHONE_W} height={PHONE_H}>
+          <StudentBadges />
+        </DCArtboard>
+        <DCArtboard id="st-me" label="Tab 4 · Me" width={PHONE_W} height={PHONE_H}>
+          <StudentMe />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="tabs-parent" title="09 · Parent · all sidebar tabs"
+        subtitle="One artboard with the parent sidebar at left and every tab's content area as a thumbnail. Full screens for the highlighted child detail live in section 04.">
+        <DCArtboard id="pt-all" label="Five tabs · light shell" width={1480} height={1040}>
+          <ParentTabsGallery />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="tabs-tutor" title="10 · Tutor · all sidebar tabs"
+        subtitle="Light shell, mint accents. Six tabs — all data auto-scoped to the tutor's cohort, with a persistent approvals callout.">
+        <DCArtboard id="tt-all" label="Six tabs · cohort-scoped" width={1480} height={1040}>
+          <TutorTabsGallery />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="tabs-orgadmin" title="11 · Org admin · all sidebar tabs"
+        subtitle="Dark shell with a persistent Demo Academy chip. Seven tabs — every list is auto-scoped to this one school. Platform feature flags are read-only.">
+        <DCArtboard id="oat-all" label="Seven tabs · org-scoped" width={1480} height={1340}>
+          <OrgAdminTabsGallery />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="tabs-superadmin" title="12 · Super admin · all sidebar tabs"
+        subtitle="Same dark shell, but no single-org chip. Seven tabs — every list is platform-wide, feature flags are editable, audit log spans every org.">
+        <DCArtboard id="sat-all" label="Seven tabs · platform-wide" width={1480} height={1340}>
+          <SuperAdminTabsGallery />
+        </DCArtboard>
+      </DCSection>
+
+      {/* ─── Reasoning card ─── */}
+      <DCSection id="notes" title="Design reasoning"
+        subtitle="Why this works — and what to push on next.">
+        <DCArtboard id="why" label="Reasoning &amp; next steps" width={760} height={620}>
+          <div style={{
+            padding: 28, fontFamily: 'var(--font-ui)', color: 'var(--ink)',
+            background: '#fff', height: '100%', overflow: 'hidden',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <LogoMark size={36} />
+              <div style={{ fontWeight: 800, fontSize: 18, color: '#4D4D4D' }}>Concept Mastery</div>
+            </div>
+            <div className="display" style={{ fontFamily: 'var(--font-display)', fontSize: 32, lineHeight: 1.1, marginBottom: 16 }}>
+              Modern, friendly, age-elastic.
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, fontSize: 13, lineHeight: 1.55, color: 'var(--slate-700)' }}>
+              <div>
+                <div style={{ fontWeight: 800, color: 'var(--ink)', marginBottom: 6 }}>Why this direction</div>
+                Grades 1–8 is a huge span. The visual system uses one calm
+                academic spine (indigo + serif display) and a brighter
+                kid layer (coral, big buttons, emoji avatars, solid-drop
+                shadows) that only appears on student screens. Parents,
+                tutors and admins get a quieter, denser shell.
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, color: 'var(--ink)', marginBottom: 6 }}>Shell per role</div>
+                Student — full-bleed, no sidebar, bottom tab bar.<br/>
+                Parent — white nav, indigo accents.<br/>
+                Tutor — mint accents, approval callouts.<br/>
+                Admin — dark slate shell, dense KPIs.<br/>
+                Each shell is visually distinct without inventing new color systems.
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, color: 'var(--ink)', marginBottom: 6 }}>The generator</div>
+                One screen surfaces every decision the SKILL.md spec
+                requires: topics, count, difficulty (1–5 scale matching
+                the adaptive engine), and the test/practice toggle. The
+                desktop view adds a live preview pane that explains
+                <em> why</em> these questions were chosen.
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, color: 'var(--ink)', marginBottom: 6 }}>Next to push on</div>
+                · Live quiz player (the student side of /live/CODE)<br/>
+                · Quiz results breakdown screen (per-question review)<br/>
+                · Onboarding step 1 (grade picker) and step 3 (review)<br/>
+                · Notification email templates<br/>
+                · Empty states + error states<br/>
+                Let me know which to deepen.
+              </div>
+            </div>
+          </div>
+        </DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

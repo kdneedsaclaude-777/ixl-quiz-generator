@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="QuizSpark">
+  <rect width="512" height="512" fill="#5C7BAE"/>
+  <!-- primary spark -->
+  <path d="M256 96 L296 216 L416 256 L296 296 L256 416 L216 296 L96 256 L216 216 Z" fill="#E8A317"/>
+  <!-- accent spark -->
+  <path d="M388 120 L402 156 L438 170 L402 184 L388 220 L374 184 L338 170 L374 156 Z" fill="#FAFAF7"/>
+</svg>

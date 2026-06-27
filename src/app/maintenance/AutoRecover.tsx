@@ -38,7 +38,11 @@ export default function AutoRecover() {
   return (
     <p
       aria-live="polite"
-      className="mt-4 text-xs text-slate-500 dark:text-slate-400"
+      className={`mt-6 text-xs font-medium ${
+        restored
+          ? "text-cm-mint"
+          : "text-slate-400 dark:text-slate-500"
+      }`}
     >
       {restored
         ? "✓ We're back — taking you home…"

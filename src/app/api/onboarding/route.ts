@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getParentForApi } from "@/lib/auth/server";
+import { canAddChild, getUserPlan, logPaywallEvent } from "@/lib/plan";
 
 type Body = {
   name?: string;
@@ -17,6 +18,14 @@ export async function POST(req: Request): Promise<Response> {
   }
   if (!auth.parent.emailVerified) {
     return NextResponse.json({ error: "Verify your email before adding a child." }, { status: 403 });
+  }
+
+  // Freemium gate: free plan includes a single child; more requires QuizSpark Plus.
+  const plan = await getUserPlan(auth.parent.userId);
+  const childGate = await canAddChild(auth.parent.userId, plan);
+  if (!childGate.allowed) {
+    void logPaywallEvent(auth.parent.userId, childGate.reason);
+    return NextResponse.json({ error: childGate.error, reason: childGate.reason, upgrade: true }, { status: childGate.status });
   }
 
   const body = (await req.json()) as Body;

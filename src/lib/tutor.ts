@@ -1,13 +1,16 @@
 import { prisma } from "@/lib/db";
+import { xpToLevel } from "@/lib/domain/gamification";
 
 export type TutorStudentRow = {
   id: number;
   name: string;
   grade: number;
   difficulty: number;
+  level: number;
   quizzesCompleted: number;
   avgScore: number | null;
   lastActive: string | null;
+  trend: number[]; // last up to 5 completed scores, chronological
 };
 
 // All students assigned to a tutor (via TutorAssignment), with rollup stats.
@@ -36,14 +39,22 @@ export async function loadTutorStudents(tutorId: string): Promise<TutorStudentRo
       .map((q) => q.completedAt)
       .filter((d): d is Date => Boolean(d))
       .sort((x, y) => y.getTime() - x.getTime())[0];
+    // Last up to 5 completed scores, chronological, for the cohort-card spark.
+    const trend = completed
+      .filter((q) => q.completedAt)
+      .sort((x, y) => (x.completedAt as Date).getTime() - (y.completedAt as Date).getTime())
+      .slice(-5)
+      .map((q) => Math.round(q.score as number));
     return {
       id: a.student.id,
       name: a.student.name,
       grade: a.student.grade,
       difficulty: a.student.currentDifficulty,
+      level: xpToLevel(a.student.xp).level,
       quizzesCompleted: completed.length,
       avgScore: avg,
       lastActive: last ? last.toISOString() : null,
+      trend,
     };
   });
 }

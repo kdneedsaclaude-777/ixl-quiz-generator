@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { levelTitle, XP_REASON_LABEL, type XpReason } from "@/lib/domain/gamification";
 
 type Props = {
   childName: string;
@@ -16,129 +17,175 @@ type Props = {
     finalLevel: number;
     finalCurrentLevelXp: number;
     finalNextLevelXp: number;
+    breakdown?: { base: number; bonuses: { reason: string; amount: number }[] };
   };
   badges: { code: string; name: string; description: string; icon: string }[];
 };
 
-// Animates the score count-up, XP bar fill, and staggered badge pops.
-// All timings are short (≤1s) so revisiting the page doesn't feel slow.
+// Results, rebuilt to match the design bundle (student.jsx StudentResults):
+// a brand blue→violet gradient header with the huge serif score reveal, a
+// 3-up breakdown card (correct / missed / XP), and staggered badge-unlock
+// cards. All count-up / XP-fill / stagger animation logic is unchanged.
 export default function ChildResultsRunner({ childName, childId, quizId, score, xp, badges }: Props) {
-  const [displayedScore, setDisplayedScore] = useState(0);
-  const [xpFill, setXpFill] = useState(0);
+  const [displayedPct, setDisplayedPct] = useState(0);
   const [revealedBadges, setRevealedBadges] = useState(0);
 
-  // Count score up in 600ms.
+  // Count the headline percentage up in 700ms.
   useEffect(() => {
     let raf = 0;
     const start = performance.now();
     const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / 600);
-      setDisplayedScore(Math.round(score.correct * easeOut(t)));
+      const t = Math.min(1, (now - start) / 700);
+      setDisplayedPct(Math.round(score.pct * easeOut(t)));
       if (t < 1) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [score.correct]);
+  }, [score.pct]);
 
-  // Fill XP bar after score animation (700ms delay), animate width to final %.
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const finalPct = Math.round((xp.finalCurrentLevelXp / xp.finalNextLevelXp) * 100);
-      setXpFill(finalPct);
-    }, 700);
-    return () => clearTimeout(timer);
-  }, [xp.finalCurrentLevelXp, xp.finalNextLevelXp]);
-
-  // Stagger badge reveals.
+  // Stagger badge reveals after the score animation.
   useEffect(() => {
     if (badges.length === 0) return;
     const timers: ReturnType<typeof setTimeout>[] = [];
     badges.forEach((_, i) => {
-      timers.push(setTimeout(() => setRevealedBadges((n) => Math.max(n, i + 1)), 1400 + i * 350));
+      timers.push(setTimeout(() => setRevealedBadges((n) => Math.max(n, i + 1)), 1100 + i * 350));
     });
-    return () => {
-      for (const t of timers) clearTimeout(t);
-    };
+    return () => { for (const t of timers) clearTimeout(t); };
   }, [badges]);
 
-  const tone = score.pct >= 80
-    ? { bg: "bg-emerald-50 dark:bg-slate-800", border: "border-emerald-300 dark:border-emerald-500", text: "text-emerald-900 dark:text-emerald-200", emoji: "🌟", note: "Amazing work!" }
-    : score.pct >= 50
-      ? { bg: "bg-amber-50 dark:bg-slate-800", border: "border-amber-300 dark:border-amber-500", text: "text-amber-900 dark:text-amber-200", emoji: "💪", note: "Nice effort!" }
-      : { bg: "bg-rose-50 dark:bg-slate-800", border: "border-rose-300 dark:border-rose-500", text: "text-rose-900 dark:text-rose-200", emoji: "🚀", note: "Keep going, you've got this!" };
+  const missed = score.total - score.correct;
+  const leveledUp = xp.finalLevel > xp.startLevel;
+  const rank = levelTitle(xp.finalLevel);
+  const prevRank = levelTitle(xp.startLevel);
+  const rankChanged = leveledUp && rank.title !== prevRank.title;
+  const bonuses = xp.breakdown?.bonuses ?? [];
+  const base = xp.breakdown?.base ?? xp.earned;
 
   return (
-    <main className="space-y-6">
-      <header className="text-center">
-        <h1 className="text-3xl font-extrabold text-amber-900 dark:text-amber-100">Great job, {childName}!</h1>
-        <p className="text-sm text-amber-800 dark:text-amber-200">Here&apos;s how you did.</p>
-      </header>
-
-      <section className={`rounded-3xl border-2 ${tone.border} ${tone.bg} p-6 text-center shadow-sm`}>
-        <div className={`text-6xl font-extrabold ${tone.text}`}>
-          {displayedScore}<span className="text-3xl">/{score.total}</span>
+    <main className="-mx-5 -mt-4">
+      {/* Gradient header with the score reveal (blue → violet, like the design) */}
+      <div
+        className="relative px-5 pb-8 pt-8 text-center text-white"
+        style={{ background: "linear-gradient(180deg, var(--cm-blue-600) 0%, var(--kid-violet-700) 100%)" }}
+      >
+        <div className="text-[13px] font-semibold uppercase tracking-[.1em] opacity-90">Quiz complete</div>
+        <div className="font-display leading-none" style={{ fontSize: 96 }}>
+          {displayedPct}<span style={{ fontSize: 48 }}>%</span>
         </div>
-        <div className={`mt-1 text-xl font-bold ${tone.text}`}>{score.pct}%</div>
-        <div className="mt-3 text-3xl" aria-hidden>{tone.emoji}</div>
-        <p className={`mt-1 text-sm font-semibold ${tone.text}`}>{tone.note}</p>
-      </section>
-
-      <section className="rounded-2xl border-2 border-amber-200 bg-white p-5 shadow-sm dark:border-amber-800/50 dark:bg-slate-800">
-        <div className="flex items-baseline justify-between">
-          <div className="text-sm font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-300">
-            Level {xp.finalLevel}
-            {xp.finalLevel > xp.startLevel && (
-              <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-100">LEVEL UP!</span>
-            )}
-          </div>
-          <div className="text-sm font-bold text-amber-800 dark:text-amber-200">+{xp.earned} XP</div>
-        </div>
-        <div className="mt-2 h-4 w-full overflow-hidden rounded-full bg-amber-100 dark:bg-amber-950/60">
-          <div
-            className="h-full bg-gradient-to-r from-amber-400 to-orange-500 transition-[width] duration-1000 ease-out"
-            style={{ width: `${xpFill}%` }}
-          />
-        </div>
-        <div className="mt-1 text-right text-xs text-amber-700 dark:text-amber-300">
-          {xp.finalCurrentLevelXp} / {xp.finalNextLevelXp} XP to next level
-        </div>
-      </section>
-
-      {badges.length > 0 && (
-        <section className="rounded-2xl border-2 border-yellow-300 bg-yellow-50 p-5 shadow-sm dark:border-yellow-600/60 dark:bg-yellow-950/30">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-yellow-800 dark:text-yellow-200">
-            🎉 New badge{badges.length === 1 ? "" : "s"} unlocked!
-          </h2>
-          <ul className="mt-3 space-y-2">
-            {badges.map((b, i) => (
-              <li
-                key={b.code}
-                className={`flex items-center gap-3 rounded-xl border-2 border-yellow-300 bg-white px-4 py-3 transition-all duration-500 dark:border-yellow-600/60 dark:bg-slate-800 ${
-                  revealedBadges > i ? "scale-100 opacity-100" : "scale-95 opacity-0"
-                }`}
-              >
-                <span className="text-4xl" aria-hidden>{b.icon}</span>
-                <div className="min-w-0 flex-1">
-                  <div className="font-bold text-yellow-900 dark:text-yellow-100">{b.name}</div>
-                  <div className="text-xs text-yellow-800 dark:text-yellow-200">{b.description}</div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <PlayAgainButton studentId={childId} />
-        <Link
-          href="/child/home"
-          className="rounded-2xl border-2 border-amber-300 bg-white px-6 py-4 text-center text-base font-bold text-amber-900 shadow-sm hover:bg-amber-50 dark:border-amber-700/60 dark:bg-slate-800 dark:text-amber-100 dark:hover:bg-slate-700"
-        >
-          Back to home
-        </Link>
+        <div className="text-sm opacity-90">{score.correct} of {score.total} correct</div>
       </div>
 
-      <p className="text-center text-xs text-amber-700 dark:text-amber-300">Quiz #{quizId}</p>
+      {/* Content sits on the paper background, pulled up under the header curve */}
+      <div className="space-y-4 px-5 pt-5">
+        {/* breakdown card */}
+        <section className="cm-card -mt-12 p-[18px] shadow-pop">
+          <div className="grid grid-cols-3 text-center">
+            <div>
+              <div className="font-display text-2xl" style={{ color: "var(--cm-mint)" }}>{score.correct}</div>
+              <div className="text-[11px] font-semibold text-slate-500">CORRECT</div>
+            </div>
+            <div className="border-x border-slate-200">
+              <div className="font-display text-2xl" style={{ color: "var(--cm-rose)" }}>{missed}</div>
+              <div className="text-[11px] font-semibold text-slate-500">MISSED</div>
+            </div>
+            <div>
+              <div className="font-display text-2xl" style={{ color: "var(--cm-blue)" }}>+{xp.earned}</div>
+              <div className="text-[11px] font-semibold text-slate-500">XP EARNED</div>
+            </div>
+          </div>
+
+          {/* Itemized XP reveal: base + each bonus. */}
+          {bonuses.length > 0 && (
+            <div className="mt-4 space-y-1.5 rounded-2xl bg-slate-50 p-3">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-600">Base score</span>
+                <span className="font-mono font-semibold text-slate-700">+{base}</span>
+              </div>
+              {bonuses.map((b, i) => (
+                <div
+                  key={`${b.reason}-${i}`}
+                  className="flex items-center justify-between text-xs"
+                  style={{ color: "var(--cm-blue)" }}
+                >
+                  <span className="font-semibold">{XP_REASON_LABEL[b.reason as XpReason] ?? "Bonus"}</span>
+                  <span className="font-mono font-bold">+{b.amount}</span>
+                </div>
+              ))}
+              <div className="flex items-center justify-between border-t border-slate-200 pt-1.5 text-xs">
+                <span className="font-bold text-slate-900">Total XP</span>
+                <span className="font-mono font-extrabold text-slate-900">+{xp.earned}</span>
+              </div>
+            </div>
+          )}
+
+          {leveledUp && (
+            <div
+              className="mt-4 flex items-center gap-3 rounded-2xl p-3.5"
+              style={{ background: "var(--cm-mint-soft)" }}
+            >
+              <div className="text-2xl">{rankChanged ? "🎖️" : "📈"}</div>
+              <div className="flex-1">
+                <div className="text-sm font-extrabold text-emerald-800">
+                  {rankChanged
+                    ? `New rank unlocked — you're a ${rank.title}!`
+                    : `Level up — you're now Level ${xp.finalLevel}!`}
+                </div>
+                <div className="text-xs text-emerald-800/85">
+                  {rankChanged
+                    ? `Level ${xp.finalLevel} reached. You're ready for harder questions.`
+                    : "You're ready for harder questions."}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="mt-3">
+            <div className="flex justify-between text-[11px] font-medium text-slate-500">
+              <span>Level {xp.finalLevel}</span>
+              <span>{xp.finalCurrentLevelXp} / {xp.finalNextLevelXp} XP</span>
+            </div>
+            <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-100">
+              <div
+                className="h-full rounded-full transition-[width] duration-1000 ease-out"
+                style={{
+                  width: `${Math.round((xp.finalCurrentLevelXp / xp.finalNextLevelXp) * 100)}%`,
+                  background: "linear-gradient(90deg, var(--cm-blue-600), var(--kid-violet-700))",
+                }}
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* badge unlocks */}
+        {badges.map((b, i) => (
+          <section
+            key={b.code}
+            className="flex items-center gap-3.5 rounded-[20px] border border-slate-200 bg-white p-4 transition-all duration-500"
+            style={{ opacity: revealedBadges > i ? 1 : 0, transform: revealedBadges > i ? "scale(1)" : "scale(.95)" }}
+          >
+            <div
+              className="grid h-14 w-14 place-items-center rounded-2xl text-2xl"
+              style={{ background: "linear-gradient(135deg, #FACC15, #F97066)", boxShadow: "0 4px 14px rgba(249,112,102,.4)" }}
+            >
+              {b.icon}
+            </div>
+            <div className="flex-1">
+              <div className="text-[11px] font-extrabold text-cm-red">NEW BADGE UNLOCKED</div>
+              <div className="mt-0.5 text-[17px] font-extrabold text-slate-900">{b.name}</div>
+              <div className="text-xs text-slate-500">{b.description}</div>
+            </div>
+          </section>
+        ))}
+
+        {/* CTAs */}
+        <div className="grid grid-cols-2 gap-2.5 pb-2">
+          <Link href="/child/home" className="cm-btn ghost lg justify-center bg-white">
+            Back home
+          </Link>
+          <PlayAgainButton studentId={childId} />
+        </div>
+        <p className="text-center text-xs text-slate-400">Quiz #{quizId} · Nice work, {childName}!</p>
+      </div>
     </main>
   );
 }
@@ -169,16 +216,11 @@ function PlayAgainButton({ studentId }: { studentId: number }) {
   }
 
   return (
-    <div className="space-y-1">
-      <button
-        type="button"
-        onClick={start}
-        disabled={loading}
-        className="w-full rounded-2xl bg-amber-500 px-6 py-4 text-center text-base font-bold text-white shadow-sm hover:bg-amber-600 disabled:opacity-50"
-      >
-        {loading ? "Loading…" : "Play again ✏️"}
+    <div>
+      <button type="button" onClick={start} disabled={loading} className="cm-btn primary lg w-full justify-center disabled:opacity-50">
+        {loading ? "Loading…" : "Practice again"}
       </button>
-      {error && <p className="text-xs text-rose-700">{error}</p>}
+      {error && <p className="mt-1 text-xs text-rose-700">{error}</p>}
     </div>
   );
 }

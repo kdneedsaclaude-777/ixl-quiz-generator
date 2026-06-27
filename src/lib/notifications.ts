@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/db";
 import { sendEmail, buildAppUrl } from "@/lib/email";
+import { renderEmail, type EmailPayload } from "@/lib/emailTemplate";
+import { streakAtRisk } from "@/lib/domain/gamification";
 
 // ---------------------------------------------------------------------------
 // Pure decision helpers (unit-tested in isolation — no DB, no mail).
@@ -63,15 +65,18 @@ export function clearEmailFlagCache(): void {
   flagCache = null;
 }
 
-// Send once per (user, type, ref). Returns true if the mail was sent, false
-// if it was a duplicate or email is globally disabled. Never throws.
+// Send once per (user, type, ref) from a structured EmailPayload. Returns
+// true if the mail was sent, false if it was a duplicate or email is
+// globally disabled. Never throws. Renders both HTML and text from the
+// same payload so they always stay in sync — clients that block HTML
+// still get the readable text part.
 async function sendOnce(args: {
   userId: string;
   to: string;
   type: string;
   refKey: string;
   subject: string;
-  text: string;
+  payload: EmailPayload;
 }): Promise<boolean> {
   try {
     if (!(await emailNotificationsEnabled())) return false;
@@ -83,7 +88,8 @@ async function sendOnce(args: {
     // also treat as "skip" so we never double-send or crash the caller.
     return false;
   }
-  await sendEmail({ to: args.to, subject: args.subject, text: args.text });
+  const { html, text } = renderEmail(args.payload);
+  await sendEmail({ to: args.to, subject: args.subject, text, html });
   return true;
 }
 
@@ -108,22 +114,67 @@ export async function notifyWelcome(args: {
   try {
     const loginUrl = buildAppUrl("/auth/login");
     const niceRole = roleLabel(args.role);
-    const text =
-      `Hi ${args.name},\n\n` +
-      `Welcome to IXL Quiz! Your ${niceRole} account is ready to use.\n\n` +
-      (args.loginNote ? `${args.loginNote}\n\n` : "") +
-      `Log in here: ${loginUrl}\n\n` +
-      `If this wasn't you, reply to this email and we'll sort it out.`;
+    const body: string[] = [
+      `Aloha ${args.name},`,
+      `Welcome to QuizSpark! Your ${niceRole} account is ready to use.`,
+    ];
+    if (args.loginNote) body.push(args.loginNote);
     await sendOnce({
       userId: args.userId,
       to: args.to,
       type: "welcome",
       refKey: "once", // one welcome per user, ever
-      subject: `Welcome to IXL Quiz, ${args.name}!`,
-      text,
+      subject: `Welcome to QuizSpark, ${args.name}!`,
+      payload: {
+        preheader: `Your ${niceRole} account is ready — log in to get started.`,
+        heading: `Aloha, ${args.name}! 🌺`,
+        body,
+        cta: { label: "Log in", url: loginUrl },
+        footnote: "If this wasn't you, reply to this email and we'll sort it out.",
+      },
     });
   } catch (err) {
     console.error("[notifications] notifyWelcome failed", err);
+  }
+}
+
+// QuizSpark Plus welcome — fired when a parent's first payment lands. Deduped per
+// subscription (refKey = subscription id) so a re-subscribe after a lapse
+// welcomes again, but a renewal of the same subscription does not.
+export async function notifyPlusWelcome(args: {
+  userId: string;
+  to: string;
+  name: string;
+  refKey: string;
+}): Promise<void> {
+  try {
+    const dashUrl = buildAppUrl("/parent/dashboard");
+    await sendOnce({
+      userId: args.userId,
+      to: args.to,
+      type: "plus_welcome",
+      refKey: args.refKey,
+      subject: `Welcome to QuizSpark Plus, ${args.name}! 🎉`,
+      payload: {
+        preheader: "Your upgrade is live — here's everything you just unlocked.",
+        heading: `You're on QuizSpark Plus, ${args.name}! 🌟`,
+        body: [
+          "Thank you for upgrading — your payment went through and your whole family now has the full QuizSpark experience.",
+          "Here's everything that's now unlocked:",
+        ],
+        items: [
+          "Unlimited quizzes — the daily limit is gone",
+          "Real Tests — timed, proctored, answers revealed only at the end",
+          "The weekly leaderboard for some friendly family competition",
+          "Full progress charts, topic mastery & complete quiz history",
+          "Add as many children as you like",
+        ],
+        cta: { label: "Open QuizSpark", url: dashUrl },
+        footnote: "Manage or cancel anytime under QuizSpark Plus in your dashboard. Questions? Just reply to this email.",
+      },
+    });
+  } catch (err) {
+    console.error("[notifications] notifyPlusWelcome failed", err);
   }
 }
 
@@ -156,10 +207,15 @@ export async function notifyTutorAssigned(args: {
         type: "assigned_as_tutor",
         refKey: `${student.id}-${bucket}`,
         subject: `New student assigned: ${student.name}`,
-        text:
-          `You've been assigned as the tutor for ${student.name} (Grade ${student.grade}).\n\n` +
-          `Open their dashboard: ${dashboardUrl}\n\n` +
-          `You'll get an email each time they finish a quiz.`,
+        payload: {
+          preheader: `${student.name} (Grade ${student.grade}) is now on your roster.`,
+          heading: `New student assigned: ${student.name}`,
+          body: [
+            `You've been assigned as the tutor for ${student.name} (Grade ${student.grade}).`,
+            `You'll get an email each time they finish a quiz.`,
+          ],
+          cta: { label: "Open their dashboard", url: dashboardUrl },
+        },
       });
       // Notify the parent that their child now has a tutor.
       if (student.parent?.email) {
@@ -169,9 +225,15 @@ export async function notifyTutorAssigned(args: {
           type: "child_tutor_assigned",
           refKey: `${student.id}-${a.tutor.id}-${bucket}`,
           subject: `${student.name} now has a tutor`,
-          text:
-            `${student.name} has been assigned to ${a.tutor.name} as their tutor.\n\n` +
-            `View ${student.name}'s page: ${buildAppUrl(`/parent/child/${student.id}`)}`,
+          payload: {
+            preheader: `${a.tutor.name} is ${student.name}'s tutor.`,
+            heading: `${student.name} now has a tutor`,
+            body: `${student.name} has been assigned to ${a.tutor.name} as their tutor.`,
+            cta: {
+              label: `View ${student.name}'s page`,
+              url: buildAppUrl(`/parent/child/${student.id}`),
+            },
+          },
         });
       }
     }
@@ -186,11 +248,12 @@ export async function notifyTutorAssigned(args: {
 export async function notifySecurity(args: {
   to: string;
   subject: string;
-  text: string;
+  payload: EmailPayload;
 }): Promise<void> {
   try {
     if (!(await emailNotificationsEnabled())) return;
-    await sendEmail({ to: args.to, subject: args.subject, text: args.text });
+    const { html, text } = renderEmail(args.payload);
+    await sendEmail({ to: args.to, subject: args.subject, text, html });
   } catch (err) {
     console.error("[notifications] notifySecurity failed", err);
   }
@@ -201,15 +264,21 @@ export async function notifyAccountSuspended(args: {
   name: string;
   reason?: string;
 }): Promise<void> {
+  const body: string[] = [
+    `Aloha ${args.name},`,
+    `Your QuizSpark account has been suspended by an administrator.`,
+  ];
+  if (args.reason) body.push(`Reason: ${args.reason}`);
+  body.push("You will not be able to log in until an admin reinstates it.");
   await notifySecurity({
     to: args.to,
-    subject: "Your IXL Quiz account has been suspended",
-    text:
-      `Hi ${args.name},\n\n` +
-      `Your IXL Quiz account has been suspended by an administrator.\n` +
-      (args.reason ? `Reason: ${args.reason}\n` : "") +
-      `You will not be able to log in until an admin reinstates it.\n\n` +
-      `If you believe this is a mistake, reply to this email.`,
+    subject: "Your QuizSpark account has been suspended",
+    payload: {
+      preheader: "Your account is temporarily locked.",
+      heading: "Your account has been suspended",
+      body,
+      footnote: "If you believe this is a mistake, reply to this email.",
+    },
   });
 }
 
@@ -219,10 +288,16 @@ export async function notifyAccountReinstated(args: {
 }): Promise<void> {
   await notifySecurity({
     to: args.to,
-    subject: "Your IXL Quiz account has been reinstated",
-    text:
-      `Hi ${args.name},\n\n` +
-      `Your IXL Quiz account is active again. Log in: ${buildAppUrl("/auth/login")}`,
+    subject: "Your QuizSpark account has been reinstated",
+    payload: {
+      preheader: "Your account is active again.",
+      heading: "Your account has been reinstated",
+      body: [
+        `Aloha ${args.name},`,
+        `Your QuizSpark account is active again — you can log in as before.`,
+      ],
+      cta: { label: "Log in", url: buildAppUrl("/auth/login") },
+    },
   });
 }
 
@@ -232,11 +307,20 @@ export async function notifyPasswordChanged(args: {
 }): Promise<void> {
   await notifySecurity({
     to: args.to,
-    subject: "Your IXL Quiz password was changed",
-    text:
-      `Hi ${args.name},\n\n` +
-      `Your password was just changed. If this was you, you can ignore this email.\n\n` +
-      `If it wasn't you, reset your password right away: ${buildAppUrl("/auth/forgot-password")}`,
+    subject: "Your QuizSpark password was changed",
+    payload: {
+      preheader: "If this wasn't you, reset your password now.",
+      heading: "Your password was changed",
+      body: [
+        `Aloha ${args.name},`,
+        `Your password was just changed. If this was you, you can safely ignore this email.`,
+        `If it wasn't you, reset your password right away using the button below.`,
+      ],
+      cta: {
+        label: "Reset password",
+        url: buildAppUrl("/auth/forgot-password"),
+      },
+    },
   });
 }
 
@@ -250,11 +334,17 @@ export async function notifyEmailChanged(args: {
 }): Promise<void> {
   await notifySecurity({
     to: args.oldEmail,
-    subject: "Your IXL Quiz login email was changed",
-    text:
-      `Hi ${args.name},\n\n` +
-      `The login email on your IXL Quiz account was changed from ${args.oldEmail} to ${args.newEmail}.\n\n` +
-      `If this wasn't you, reply to this email immediately — we can restore access.`,
+    subject: "Your QuizSpark login email was changed",
+    payload: {
+      preheader: `Login email changed to ${args.newEmail}.`,
+      heading: "Your login email was changed",
+      body: [
+        `Aloha ${args.name},`,
+        `The login email on your QuizSpark account was changed from ${args.oldEmail} to ${args.newEmail}.`,
+      ],
+      footnote:
+        "If this wasn't you, reply to this email immediately — we can restore access.",
+    },
   });
 }
 
@@ -312,7 +402,12 @@ export async function notifyQuizCompleted(quizId: number): Promise<void> {
         type: "quiz_completed",
         refKey: ref,
         subject: `You finished Quiz #${quiz.id} — ${score}%`,
-        text: `Great work, ${studentName}! You scored ${score}% on Quiz #${quiz.id}.\n\nSee your results: ${resultsUrl}`,
+        payload: {
+          preheader: `You scored ${score}% on Quiz #${quiz.id}.`,
+          heading: `Nice work, ${studentName}!`,
+          body: `You scored ${score}% on Quiz #${quiz.id}. Tap below to see every question and the explanations.`,
+          cta: { label: "See your results", url: resultsUrl },
+        },
       });
     }
 
@@ -325,7 +420,12 @@ export async function notifyQuizCompleted(quizId: number): Promise<void> {
         type: "quiz_completed",
         refKey: ref,
         subject: `${studentName} finished Quiz #${quiz.id} — ${score}%`,
-        text: `Your student ${studentName} completed Quiz #${quiz.id} with a score of ${score}%.\n\nReview: ${resultsUrl}`,
+        payload: {
+          preheader: `${studentName} scored ${score}% on Quiz #${quiz.id}.`,
+          heading: `${studentName} finished a quiz`,
+          body: `Your student ${studentName} completed Quiz #${quiz.id} with a score of ${score}%.`,
+          cta: { label: "Review the quiz", url: resultsUrl },
+        },
       });
     }
 
@@ -338,7 +438,12 @@ export async function notifyQuizCompleted(quizId: number): Promise<void> {
         type: "quiz_completed",
         refKey: ref,
         subject: `${studentName} finished Quiz #${quiz.id} — ${score}%`,
-        text: `${studentName} completed Quiz #${quiz.id} with a score of ${score}%.\n\nView results: ${resultsUrl}`,
+        payload: {
+          preheader: `${studentName} scored ${score}% on Quiz #${quiz.id}.`,
+          heading: `${studentName} finished a quiz`,
+          body: `${studentName} completed Quiz #${quiz.id} with a score of ${score}%.`,
+          cta: { label: "View results", url: resultsUrl },
+        },
       });
     }
 
@@ -353,7 +458,15 @@ export async function notifyQuizCompleted(quizId: number): Promise<void> {
         type: "low_score",
         refKey: ref,
         subject: `Heads up: ${studentName} scored ${score}% on Quiz #${quiz.id}`,
-        text: `${studentName} scored ${score}% on Quiz #${quiz.id}, which is below your alert threshold.\n\nA little extra practice might help. Results: ${resultsUrl}`,
+        payload: {
+          preheader: `Below your alert threshold — a short follow-up could help.`,
+          heading: `Heads up about ${studentName}`,
+          body: [
+            `${studentName} scored ${score}% on Quiz #${quiz.id}, which is below your alert threshold.`,
+            `A little extra practice on the weak topics might help.`,
+          ],
+          cta: { label: "View results", url: resultsUrl },
+        },
       });
     }
   } catch (err) {
@@ -368,11 +481,19 @@ export async function notifyQuizCompleted(quizId: number): Promise<void> {
 
 export async function runScheduledNotifications(
   now: Date = new Date(),
-): Promise<{ digests: number; inactivity: number; tutorDigests: number }> {
+): Promise<{ digests: number; inactivity: number; streaks: number; tutorDigests: number }> {
   let digests = 0;
   let inactivity = 0;
+  let streaks = 0;
   let tutorDigests = 0;
-  if (!(await emailNotificationsEnabled())) return { digests, inactivity, tutorDigests };
+  if (!(await emailNotificationsEnabled())) return { digests, inactivity, streaks, tutorDigests };
+
+  // Streaks shorter than this aren't worth a nudge. Tunable via env; default 1
+  // (any live streak that breaks at midnight tonight earns one reminder).
+  const streakMinDays = (() => {
+    const n = parseInt(process.env.STREAK_REMINDER_MIN_DAYS ?? "", 10);
+    return Number.isFinite(n) && n > 0 ? n : 1;
+  })();
 
   const parents = await prisma.user.findMany({
     where: { role: "parent", deletedAt: null, notificationSettings: { isNot: null } },
@@ -397,24 +518,31 @@ export async function runScheduledNotifications(
     if (!s || !p.email || p.students.length === 0) continue;
 
     if (s.weeklyDigest) {
-      const lines = p.students.map((stu) => {
+      const items = p.students.map((stu) => {
         const wk = stu.quizzes.filter(
           (q) => q.completedAt && q.completedAt >= since,
         );
         const avg = wk.length
           ? Math.round(wk.reduce((a, q) => a + (q.score ?? 0), 0) / wk.length)
           : null;
-        return `• ${stu.name}: ${wk.length} quiz(zes) this week${
+        return `${stu.name}: ${wk.length} quiz(zes) this week${
           avg !== null ? `, avg ${avg}%` : ""
         }`;
       });
+      const noun = p.students.length === 1 ? "child" : "children";
       const sent = await sendOnce({
         userId: p.id,
         to: p.email,
         type: "weekly_digest",
         refKey: weekRef,
         subject: "Your weekly practice digest",
-        text: `Here's how your ${p.students.length === 1 ? "child" : "children"} did this week:\n\n${lines.join("\n")}\n\n${buildAppUrl("/parent/dashboard")}`,
+        payload: {
+          preheader: `This week's snapshot for your ${noun}.`,
+          heading: "Your weekly practice digest",
+          body: `Here's how your ${noun} did this week:`,
+          items,
+          cta: { label: "Open your dashboard", url: buildAppUrl("/parent/dashboard") },
+        },
       });
       if (sent) digests++;
     }
@@ -430,9 +558,47 @@ export async function runScheduledNotifications(
             type: "inactivity",
             refKey: `${stu.id}-${dayBucket}`,
             subject: `${stu.name} hasn't practised recently`,
-            text: `${stu.name} hasn't completed a quiz in at least ${s.alertNoPracticeDays} day(s). A short session keeps the streak alive!\n\n${buildAppUrl("/parent/dashboard")}`,
+            payload: {
+              preheader: `${stu.name} hasn't completed a quiz in ${s.alertNoPracticeDays}+ days.`,
+              heading: `${stu.name} hasn't practised recently`,
+              body: `${stu.name} hasn't completed a quiz in at least ${s.alertNoPracticeDays} day(s). A short session keeps the streak alive!`,
+              cta: { label: "Open your dashboard", url: buildAppUrl("/parent/dashboard") },
+            },
           });
           if (sent) inactivity++;
+        }
+      }
+    }
+
+    // Streak-risk reminder — the student has a live streak they haven't extended
+    // today, so it breaks at midnight unless they practise. One nudge per child
+    // per day. Opt-out via NotificationSettings.streakReminder.
+    if (s.streakReminder) {
+      for (const stu of p.students) {
+        const dates = stu.quizzes
+          .map((q) => q.completedAt)
+          .filter((d): d is Date => d != null);
+        const atRisk = streakAtRisk(dates, now, streakMinDays);
+        if (atRisk > 0) {
+          const dayBucket = now.toISOString().slice(0, 10);
+          const sent = await sendOnce({
+            userId: p.id,
+            to: p.email,
+            type: "streak_reminder",
+            refKey: `${stu.id}-${dayBucket}`,
+            subject: `🔥 Keep ${stu.name}'s ${atRisk}-day streak alive`,
+            payload: {
+              preheader: `${stu.name} hasn't practised yet today — one quiz keeps the ${atRisk}-day streak going.`,
+              heading: `Don't break the streak, ${stu.name}! 🔥`,
+              body: [
+                `${stu.name} is on a ${atRisk}-day practice streak — but it ends at midnight unless they finish a quiz today.`,
+                `Just one quick session keeps it going.`,
+              ],
+              cta: { label: "Practise now", url: buildAppUrl("/parent/dashboard") },
+              footnote: "You can turn streak reminders off anytime in your notification settings.",
+            },
+          });
+          if (sent) streaks++;
         }
       }
     }
@@ -465,30 +631,34 @@ export async function runScheduledNotifications(
     if (!t.email || t.tutorAssignments.length === 0) continue;
     const wantsDigest = t.notificationSettings?.weeklyDigest ?? true;
     if (!wantsDigest) continue;
-    const lines = t.tutorAssignments.map(({ student }) => {
+    const items = t.tutorAssignments.map(({ student }) => {
       const wk = student.quizzes.filter(
         (q) => q.completedAt && q.completedAt >= since,
       );
       const avg = wk.length
         ? Math.round(wk.reduce((a, q) => a + (q.score ?? 0), 0) / wk.length)
         : null;
-      return `• ${student.name} (G${student.grade}): ${wk.length} quiz(zes) this week${
+      return `${student.name} (G${student.grade}): ${wk.length} quiz(zes) this week${
         avg !== null ? `, avg ${avg}%` : ""
       }`;
     });
+    const noun = t.tutorAssignments.length === 1 ? "student" : "students";
     const sent = await sendOnce({
       userId: t.id,
       to: t.email,
       type: "tutor_weekly_digest",
       refKey: weekRef,
       subject: "Your tutor digest — this week's cohort",
-      text:
-        `Here's how your ${t.tutorAssignments.length === 1 ? "student" : "students"} did this week:\n\n` +
-        `${lines.join("\n")}\n\n` +
-        `Open your cohort: ${buildAppUrl("/tutor/dashboard")}`,
+      payload: {
+        preheader: `This week's snapshot for your cohort.`,
+        heading: "This week's cohort snapshot",
+        body: `Here's how your ${noun} did this week:`,
+        items,
+        cta: { label: "Open your cohort", url: buildAppUrl("/tutor/dashboard") },
+      },
     });
     if (sent) tutorDigests++;
   }
 
-  return { digests, inactivity, tutorDigests };
+  return { digests, inactivity, streaks, tutorDigests };
 }

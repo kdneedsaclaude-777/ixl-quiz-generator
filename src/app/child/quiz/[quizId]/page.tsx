@@ -4,7 +4,7 @@ import { resolveActiveStudent } from "@/lib/active-child";
 import { sanitizeSvg } from "@/lib/sanitize-svg";
 import ChildQuizRunner from "./ChildQuizRunner";
 
-export const metadata = { title: "Practice — IXL Quiz" };
+export const metadata = { title: "Practice — QuizSpark" };
 
 export default async function ChildQuizPage({
   params,

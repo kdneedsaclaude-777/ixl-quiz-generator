@@ -18,17 +18,14 @@ export default function ChildTrendChart({
   if (!hasData) {
     return (
       <div className="rounded-lg border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
-        No quiz history yet. Once your kids complete quizzes, the 30-day score trend will appear here.
+        No quiz history yet. Once your kids complete quizzes, their score trend will appear here.
       </div>
     );
   }
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-        Score % per day · last 30 days
-      </h3>
-      <div className="mt-2 h-56 w-full" style={{ minWidth: 0 }}>
+      <div className="h-56 w-full" style={{ minWidth: 0 }}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 8, right: 12, left: -16, bottom: 4 }}>
             <CartesianGrid stroke="currentColor" strokeOpacity={0.1} vertical={false} />

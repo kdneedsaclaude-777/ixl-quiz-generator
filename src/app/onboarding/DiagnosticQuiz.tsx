@@ -61,36 +61,43 @@ export default function DiagnosticQuiz({
   }
 
   return (
-    <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 dark:border-indigo-900 dark:bg-indigo-950/40">
-      <h3 className="text-sm font-semibold text-indigo-900 dark:text-indigo-100">Quick diagnostic</h3>
-      <p className="mt-1 text-xs text-indigo-800 dark:text-indigo-200">
+    <div className="cm-card p-4">
+      <span className="cm-pill indigo">Quick diagnostic</span>
+      <p className="mt-2 text-xs text-slate-500">
         Answer 3 questions and we&apos;ll suggest a starting difficulty.
       </p>
       <div className="mt-3 space-y-3">
         {items.map((item, i) => (
-          <fieldset key={i} className="rounded border border-indigo-200 bg-white p-3 dark:border-indigo-900 dark:bg-slate-800">
-            <legend className="px-1 text-xs font-medium text-slate-500 dark:text-slate-400">Question {i + 1}</legend>
-            <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{item.prompt}</p>
+          <fieldset
+            key={i}
+            className="rounded-[14px] bg-white p-3"
+            style={{ border: "1px solid var(--slate-200)" }}
+          >
+            <legend className="px-1 text-xs font-medium text-slate-500">Question {i + 1}</legend>
+            <p className="text-sm font-medium text-slate-900">{item.prompt}</p>
             <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {item.options.map((opt, idx) => (
-                <label
-                  key={idx}
-                  className={`flex cursor-pointer items-center justify-center rounded border px-2 py-1.5 text-sm ${
-                    answers[i] === idx
-                      ? "border-indigo-600 bg-indigo-100 dark:border-indigo-400 dark:bg-indigo-900/60"
-                      : "border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-800"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name={`diag-${i}`}
-                    className="sr-only"
-                    checked={answers[i] === idx}
-                    onChange={() => setAnswers((prev) => prev.map((p, j) => (j === i ? idx : p)))}
-                  />
-                  {opt}
-                </label>
-              ))}
+              {item.options.map((opt, idx) => {
+                const picked = answers[i] === idx;
+                return (
+                  <label
+                    key={idx}
+                    className="flex cursor-pointer items-center justify-center rounded-[10px] bg-white px-2 py-1.5 text-sm transition-shadow"
+                    style={{
+                      border: picked ? "1.5px solid var(--cm-blue)" : "1px solid var(--slate-200)",
+                      boxShadow: picked ? "0 0 0 4px var(--cm-blue-50)" : "none",
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name={`diag-${i}`}
+                      className="sr-only"
+                      checked={picked}
+                      onChange={() => setAnswers((prev) => prev.map((p, j) => (j === i ? idx : p)))}
+                    />
+                    {opt}
+                  </label>
+                );
+              })}
             </div>
           </fieldset>
         ))}
@@ -99,7 +106,7 @@ export default function DiagnosticQuiz({
         type="button"
         onClick={submit}
         disabled={!allAnswered || done}
-        className="mt-3 rounded bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+        className="cm-btn primary mt-3 disabled:opacity-50"
       >
         {done ? "Difficulty suggested" : "Suggest difficulty"}
       </button>

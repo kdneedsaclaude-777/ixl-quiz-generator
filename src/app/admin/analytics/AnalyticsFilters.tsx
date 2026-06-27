@@ -45,16 +45,18 @@ export default function AnalyticsFilters() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [grade, debounced]);
 
+  const ctrlCls =
+    "rounded-lg border px-2 py-1.5 text-sm text-white placeholder:text-[color:var(--shell-muted)] focus:outline-none focus:ring-2 focus:ring-[#A5B4FC]/40 border-[color:var(--shell-border)] bg-white/5";
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+      <label className="text-xs font-semibold uppercase tracking-wide text-[color:var(--shell-muted)]">
         Filter:
       </label>
       <select
         aria-label="Filter by grade"
         value={grade}
         onChange={(e) => setGrade(e.target.value)}
-        className="rounded border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+        className={ctrlCls}
       >
         <option value="all">All grades</option>
         {[1, 2, 3, 4, 5, 6, 7, 8].map((g) => (
@@ -69,7 +71,7 @@ export default function AnalyticsFilters() {
         onChange={(e) => setName(e.target.value)}
         placeholder="Search student name…"
         aria-label="Search student name"
-        className="rounded border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+        className={`${ctrlCls} px-3`}
       />
       {(grade !== "all" || name.trim()) && (
         <button
@@ -78,7 +80,7 @@ export default function AnalyticsFilters() {
             setGrade("all");
             setName("");
           }}
-          className="text-xs font-medium text-slate-500 underline hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+          className="text-xs font-medium text-[#A5B4FC] underline hover:text-white"
         >
           Clear
         </button>

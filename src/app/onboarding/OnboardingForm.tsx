@@ -1,10 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import CMIcon from "@/components/CMIcon";
 import DiagnosticQuiz from "./DiagnosticQuiz";
 
-type Group = { id: number; gradeLevel: number; letter: string; name: string };
+type Group = { id: number; gradeLevel: number; letter: string; name: string; skillCount: number };
+
+type Step = "setup" | "review" | "done";
 
 export default function OnboardingForm({ groups }: { groups: Group[] }) {
   const router = useRouter();
@@ -14,11 +17,22 @@ export default function OnboardingForm({ groups }: { groups: Group[] }) {
   const [difficulty, setDifficulty] = useState(1);
   const [showDiagnostic, setShowDiagnostic] = useState(false);
   const [diagnosticHint, setDiagnosticHint] = useState<string | null>(null);
+  const [diagnosticRan, setDiagnosticRan] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [step, setStep] = useState<Step>("setup");
+  const [createdId, setCreatedId] = useState<number | null>(null);
 
   const gradeGroups = useMemo(() => groups.filter((g) => g.gradeLevel === grade), [groups, grade]);
   const allSelected = gradeGroups.length > 0 && gradeGroups.every((g) => selected.has(g.id));
+
+  const chosen = useMemo(() => gradeGroups.filter((g) => selected.has(g.id)), [gradeGroups, selected]);
+  const totalSkills = useMemo(() => chosen.reduce((sum, g) => sum + g.skillCount, 0), [chosen]);
+
+  const doneHeadingRef = useRef<HTMLHeadingElement | null>(null);
+  useEffect(() => {
+    if (step === "done") doneHeadingRef.current?.focus();
+  }, [step]);
 
   function toggle(id: number) {
     setSelected((prev) => {
@@ -41,10 +55,12 @@ export default function OnboardingForm({ groups }: { groups: Group[] }) {
   function onDiagnosticComplete(suggested: number) {
     setDifficulty(suggested);
     setDiagnosticHint(`Suggested starting difficulty: Level ${suggested}.`);
+    setDiagnosticRan(true);
   }
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  // Network call: validates again, creates the student, and on success moves to
+  // the "done" step (instead of navigating away).
+  async function createStudent() {
     setError(null);
     if (!name.trim()) return setError("Enter the student's name.");
     if (selected.size === 0) return setError("Select at least one topic group.");
@@ -65,123 +81,387 @@ export default function OnboardingForm({ groups }: { groups: Group[] }) {
         throw new Error(j.error ?? "Failed to create student");
       }
       const { studentId } = await res.json();
-      router.push(`/dashboard?studentId=${studentId}`);
+      setCreatedId(studentId);
+      setStep("done");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to create student");
+    } finally {
       setSubmitting(false);
     }
   }
 
-  return (
-    <form
-      onSubmit={onSubmit}
-      className="space-y-6 rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800"
-    >
-      <div>
-        <label htmlFor="name" className="block text-sm font-medium text-slate-900 dark:text-slate-100">Student name</label>
-        <input
-          id="name"
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="mt-1 w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-500 dark:bg-slate-700 dark:text-white"
-          placeholder="e.g. Alex"
-          required
-        />
-      </div>
+  // The form submit acts as a step router: setup → review (no network), then
+  // review → createStudent().
+  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (step === "setup") {
+      setError(null);
+      if (!name.trim()) return setError("Enter the student's name.");
+      if (selected.size === 0) return setError("Select at least one topic group.");
+      setStep("review");
+      return;
+    }
+    if (step === "review") {
+      void createStudent();
+    }
+  }
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <label htmlFor="grade" className="block text-sm font-medium text-slate-900 dark:text-slate-100">Grade</label>
-          <select
-            id="grade"
-            value={grade}
-            onChange={(e) => {
-              setGrade(parseInt(e.target.value, 10));
-              setSelected(new Set());
-              setDiagnosticHint(null);
-            }}
-            className="mt-1 w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-500 dark:bg-slate-700 dark:text-white"
-          >
-            {[1, 2, 3, 4, 5, 6, 7, 8].map((g) => (
-              <option key={g} value={g}>Grade {g}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="difficulty" className="block text-sm font-medium text-slate-900 dark:text-slate-100">Starting difficulty</label>
-          <select
-            id="difficulty"
-            value={difficulty}
-            onChange={(e) => setDifficulty(parseInt(e.target.value, 10))}
-            className="mt-1 w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-500 dark:bg-slate-700 dark:text-white"
-          >
-            {[1, 2, 3, 4, 5].map((d) => (
-              <option key={d} value={d}>Level {d}</option>
-            ))}
-          </select>
-          {diagnosticHint && (
-            <p className="mt-1 text-xs text-emerald-700 dark:text-emerald-400">{diagnosticHint}</p>
-          )}
-        </div>
-      </div>
+  function resetForAnother() {
+    setStep("setup");
+    setName("");
+    setSelected(new Set());
+    setDifficulty(1);
+    setDiagnosticHint(null);
+    setDiagnosticRan(false);
+    setCreatedId(null);
+    setShowDiagnostic(false);
+    setError(null);
+  }
 
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setShowDiagnostic((s) => !s)}
-          className="rounded border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-800 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950 dark:text-indigo-200 dark:hover:bg-indigo-900"
+  const trimmedName = name.trim();
+
+  // STEP 3 (done) renders outside the <form> so Enter can't re-submit.
+  if (step === "done") {
+    return (
+      <div className="space-y-6 text-center">
+        <div
+          aria-hidden
+          className="mx-auto grid h-16 w-16 place-items-center rounded-[20px]"
+          style={{ background: "var(--cm-mint-soft)" }}
         >
-          {showDiagnostic ? "Hide diagnostic" : "Take 3-question diagnostic"}
-        </button>
-        <span className="text-xs text-slate-500 dark:text-slate-400">
-          (Optional — helps auto-set the starting difficulty.)
-        </span>
-      </div>
-      {showDiagnostic && <DiagnosticQuiz grade={grade} onComplete={onDiagnosticComplete} />}
+          <CMIcon name="check" size={34} color="var(--cm-mint)" stroke={3} />
+        </div>
 
-      <fieldset>
-        <div className="flex items-center justify-between">
-          <legend className="text-sm font-medium text-slate-900 dark:text-slate-100">Topic groups</legend>
+        <div className="space-y-2">
+          <h1
+            ref={doneHeadingRef}
+            tabIndex={-1}
+            className="font-display text-[32px] leading-tight text-slate-900 outline-none"
+          >
+            {trimmedName || "Student"} is ready
+          </h1>
+          <p className="text-sm text-slate-500">
+            Grade {grade} · {chosen.length} topic group{chosen.length === 1 ? "" : "s"} · {totalSkills} skill
+            {totalSkills === 1 ? "" : "s"} enabled.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap justify-center gap-2">
+          <span className="cm-pill indigo">Grade {grade}</span>
+          <span className="cm-pill amber">{totalSkills} skill{totalSkills === 1 ? "" : "s"}</span>
+          <span className="cm-pill mint">Level {difficulty}</span>
+        </div>
+
+        <div className="flex flex-col gap-2.5">
           <button
             type="button"
-            onClick={toggleAll}
-            disabled={gradeGroups.length === 0}
-            className="rounded border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-800"
+            onClick={() => createdId != null && router.push(`/parent/child/${createdId}`)}
+            className="cm-btn primary lg w-full justify-center"
           >
-            {allSelected ? "Clear all" : "Select all topics for this grade"}
+            Generate first quiz
+            <CMIcon name="play" size={18} color="#fff" />
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push("/parent/dashboard")}
+            className="cm-btn ghost w-full justify-center"
+          >
+            Go to dashboard
+          </button>
+          <button
+            type="button"
+            onClick={resetForAnother}
+            className="text-sm font-semibold"
+            style={{ color: "var(--cm-blue)" }}
+          >
+            Add another child
           </button>
         </div>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          Pick at least one. Add more later from the dashboard.
-        </p>
-        <div className="mt-3 grid max-h-72 grid-cols-1 gap-2 overflow-y-auto rounded border border-slate-200 bg-slate-50 p-3 sm:grid-cols-2 dark:border-slate-700 dark:bg-slate-950">
-          {gradeGroups.map((g) => (
-            <label
-              key={g.id}
-              className="flex cursor-pointer items-start gap-2 rounded px-2 py-1.5 text-sm hover:bg-white text-slate-900 dark:text-slate-100 dark:hover:bg-slate-900"
-            >
-              <input
-                type="checkbox"
-                className="mt-0.5"
-                checked={selected.has(g.id)}
-                onChange={() => toggle(g.id)}
-              />
-              <span>{g.name}</span>
-            </label>
-          ))}
+      </div>
+    );
+  }
+
+  const isSetup = step === "setup";
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-5">
+      {/* progress */}
+      <div className="flex items-center gap-2.5 pt-1">
+        {!isSetup && (
+          <button
+            type="button"
+            onClick={() => setStep("setup")}
+            aria-label="Back to setup"
+            className="grid h-7 w-7 place-items-center rounded-full"
+          >
+            <CMIcon name="chevronL" size={20} color="var(--slate-400)" />
+          </button>
+        )}
+        <div
+          className="cm-bar flex-1"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={2}
+          aria-valuenow={isSetup ? 1 : 2}
+        >
+          <i style={{ width: isSetup ? "50%" : "100%" }} />
         </div>
-      </fieldset>
+        <span className="font-mono text-xs text-slate-500">{isSetup ? "1 of 2" : "2 of 2"}</span>
+      </div>
 
-      {error && <p className="rounded bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-950 dark:text-rose-200">{error}</p>}
+      <span className="cm-pill indigo">{isSetup ? "Step 1 · Topics" : "Step 2 · Review"}</span>
+      <h1 className="font-display text-[30px] leading-tight text-slate-900">
+        {isSetup
+          ? trimmedName
+            ? `What should ${trimmedName} practice?`
+            : "Set up a new student"
+          : `${trimmedName || "Student"} — review & confirm`}
+      </h1>
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="rounded bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-      >
-        {submitting ? "Creating…" : "Create student"}
-      </button>
+      {isSetup ? (
+        <>
+          <p className="text-sm text-slate-500">
+            Pick the grade and topic groups you want enabled, then review before creating.
+          </p>
+
+          <div className="cm-card space-y-5 p-5">
+            <div>
+              <label htmlFor="name" className="cm-label">Student name</label>
+              <input
+                id="name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="cm-field"
+                placeholder="e.g. Alex"
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="grade" className="cm-label">Grade</label>
+                <select
+                  id="grade"
+                  value={grade}
+                  onChange={(e) => {
+                    setGrade(parseInt(e.target.value, 10));
+                    setSelected(new Set());
+                    setDiagnosticHint(null);
+                    setDiagnosticRan(false);
+                  }}
+                  className="cm-field"
+                >
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((g) => (
+                    <option key={g} value={g}>Grade {g}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="difficulty" className="cm-label">Starting difficulty</label>
+                <select
+                  id="difficulty"
+                  value={difficulty}
+                  onChange={(e) => {
+                    setDifficulty(parseInt(e.target.value, 10));
+                    setDiagnosticRan(false);
+                    setDiagnosticHint(null);
+                  }}
+                  className="cm-field"
+                >
+                  {[1, 2, 3, 4, 5].map((d) => (
+                    <option key={d} value={d}>Level {d}</option>
+                  ))}
+                </select>
+                {diagnosticHint && <p className="mt-1 text-xs font-medium" style={{ color: "var(--cm-mint)" }}>{diagnosticHint}</p>}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowDiagnostic((s) => !s)}
+                className="cm-pill indigo"
+                style={{ cursor: "pointer", height: 30 }}
+              >
+                {showDiagnostic ? "Hide diagnostic" : "Take 3-question diagnostic"}
+              </button>
+              <span className="text-xs text-slate-500">Optional — auto-sets the starting difficulty.</span>
+            </div>
+            {showDiagnostic && <DiagnosticQuiz grade={grade} onComplete={onDiagnosticComplete} />}
+          </div>
+
+          {/* topic groups — design cards */}
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-slate-700">Topic groups · Grade {grade}</h2>
+            <button
+              type="button"
+              onClick={toggleAll}
+              disabled={gradeGroups.length === 0}
+              className="text-xs font-semibold disabled:opacity-50"
+              style={{ color: "var(--cm-blue)" }}
+            >
+              {allSelected ? "Clear all" : "Select all"}
+            </button>
+          </div>
+
+          <div className="grid gap-2">
+            {gradeGroups.length === 0 ? (
+              <p className="rounded-[14px] border border-dashed border-slate-300 bg-white p-5 text-center text-sm text-slate-500">
+                No topic groups for this grade yet.
+              </p>
+            ) : (
+              gradeGroups.map((g) => {
+                const picked = selected.has(g.id);
+                return (
+                  <button
+                    type="button"
+                    key={g.id}
+                    onClick={() => toggle(g.id)}
+                    className="flex items-center gap-3 rounded-[14px] bg-white p-3 text-left transition-shadow"
+                    style={{
+                      border: picked ? "1.5px solid var(--cm-blue)" : "1px solid var(--slate-200)",
+                      boxShadow: picked ? "0 0 0 4px var(--cm-blue-50)" : "none",
+                    }}
+                  >
+                    <span
+                      className="grid h-8 w-8 place-items-center rounded-[9px] text-[13px] font-extrabold"
+                      style={{
+                        background: picked ? "var(--cm-blue)" : "var(--slate-100)",
+                        color: picked ? "#fff" : "var(--slate-500)",
+                      }}
+                    >
+                      {g.letter}
+                    </span>
+                    <span className="flex-1">
+                      <span className="block text-sm font-semibold text-slate-900">{g.name}</span>
+                      <span className="block text-xs text-slate-500">{g.skillCount} skill{g.skillCount === 1 ? "" : "s"}</span>
+                    </span>
+                    <span
+                      className="grid h-[22px] w-[22px] place-items-center rounded-[7px]"
+                      style={{
+                        border: `1.5px solid ${picked ? "var(--cm-blue)" : "var(--slate-300)"}`,
+                        background: picked ? "var(--cm-blue)" : "#fff",
+                      }}
+                    >
+                      {picked && <CMIcon name="check" size={14} color="#fff" stroke={3} />}
+                    </span>
+                  </button>
+                );
+              })
+            )}
+          </div>
+
+          {error && <p className="rounded-xl bg-cm-red-soft px-3 py-2 text-sm" style={{ color: "#B43326" }}>{error}</p>}
+
+          <button type="submit" className="cm-btn primary lg w-full justify-center">
+            Review setup
+            <CMIcon name="arrow" size={18} color="#fff" />
+          </button>
+        </>
+      ) : (
+        <>
+          <p className="text-sm text-slate-500">
+            Check the details below, then create the student.
+          </p>
+
+          <div className="cm-card space-y-5 p-5">
+            {/* identity tile */}
+            <div className="flex items-center gap-3">
+              <span
+                className="grid h-14 w-14 place-items-center rounded-[18px] bg-white text-[22px] font-extrabold text-slate-900"
+                style={{ border: "2px solid var(--cm-coral)" }}
+              >
+                {trimmedName ? trimmedName.charAt(0).toUpperCase() : "📘"}
+              </span>
+              <div className="flex-1">
+                <div className="font-display text-[22px] leading-tight text-slate-900">{trimmedName || "Student"}</div>
+                <div className="text-xs text-slate-500">Grade {grade} · IXL Ontario</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setStep("setup")}
+                className="text-xs font-semibold"
+                style={{ color: "var(--cm-blue)" }}
+              >
+                Edit
+              </button>
+            </div>
+
+            {/* stat row */}
+            <dl className="grid grid-cols-3 gap-2 text-center">
+              <div>
+                <dd className="font-display text-[26px] leading-none" style={{ color: "var(--cm-blue)" }}>{chosen.length}</dd>
+                <dt className="mt-1 text-xs text-slate-500">Topics</dt>
+              </div>
+              <div>
+                <dd className="font-display text-[26px] leading-none" style={{ color: "var(--cm-gold)" }}>{totalSkills}</dd>
+                <dt className="mt-1 text-xs text-slate-500">Skills</dt>
+              </div>
+              <div>
+                <dd className="font-display text-[26px] leading-none" style={{ color: "var(--cm-mint)" }}>Level {difficulty}</dd>
+                <dt className="mt-1 text-xs text-slate-500">Starting difficulty</dt>
+              </div>
+            </dl>
+
+            {diagnosticRan ? (
+              <span className="cm-pill mint">Suggested by diagnostic</span>
+            ) : (
+              <span className="cm-pill">Set manually</span>
+            )}
+
+            {/* chosen topic groups (read-only, always-picked styling) */}
+            <div className="space-y-2">
+              <h2 className="text-sm font-bold text-slate-700">Chosen topic groups · Grade {grade}</h2>
+              <div className="grid gap-2">
+                {chosen.map((g) => (
+                  <div
+                    key={g.id}
+                    className="flex items-center gap-3 rounded-[14px] bg-white p-3 text-left"
+                    style={{
+                      border: "1.5px solid var(--cm-blue)",
+                      boxShadow: "0 0 0 4px var(--cm-blue-50)",
+                    }}
+                  >
+                    <span
+                      className="grid h-8 w-8 place-items-center rounded-[9px] text-[13px] font-extrabold"
+                      style={{ background: "var(--cm-blue)", color: "#fff" }}
+                    >
+                      {g.letter}
+                    </span>
+                    <span className="flex-1">
+                      <span className="block text-sm font-semibold text-slate-900">{g.name}</span>
+                      <span className="block text-xs text-slate-500">{g.skillCount} skill{g.skillCount === 1 ? "" : "s"}</span>
+                    </span>
+                    <span
+                      className="grid h-[22px] w-[22px] place-items-center rounded-[7px]"
+                      style={{ border: "1.5px solid var(--cm-blue)", background: "var(--cm-blue)" }}
+                    >
+                      <CMIcon name="check" size={14} color="#fff" stroke={3} />
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <p className="text-sm text-slate-500">
+              {trimmedName || "Your student"} will be ready to practise right away.
+            </p>
+          </div>
+
+          {error && <p className="rounded-xl bg-cm-red-soft px-3 py-2 text-sm" style={{ color: "#B43326" }}>{error}</p>}
+
+          <div className="flex gap-2.5">
+            <button type="button" onClick={() => setStep("setup")} className="cm-btn ghost flex-1 justify-center">
+              Back
+            </button>
+            <button type="submit" disabled={submitting} className="cm-btn primary flex-[2] justify-center">
+              {submitting ? "Creating…" : "Create student"}
+              {!submitting && <CMIcon name="check" size={18} color="#fff" stroke={3} />}
+            </button>
+          </div>
+        </>
+      )}
     </form>
   );
 }

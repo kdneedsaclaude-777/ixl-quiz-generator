@@ -80,7 +80,20 @@ async function loadQuizContext(req: GenerateQuizRequest): Promise<{
     throw new Error("Student has no topic groups selected.");
   }
 
-  const allSelectedSkills = student.topicSelections.flatMap((sel) => sel.topicGroup.skills);
+  // Manual builder / targeted tiles restrict generation to a subset of the
+  // enabled groups; intersect so the pool can never widen past the parent's
+  // pick. If a requested filter matches none of the enabled groups, throw
+  // (caller falls back to the mock, which produces a clean empty-pool 400)
+  // rather than silently widening to the full set.
+  const selections =
+    req.topicGroupIds && req.topicGroupIds.length > 0
+      ? student.topicSelections.filter((sel) => req.topicGroupIds!.includes(sel.topicGroupId))
+      : student.topicSelections;
+  if (selections.length === 0) {
+    throw new Error("No enabled topic groups match the requested filter.");
+  }
+
+  const allSelectedSkills = selections.flatMap((sel) => sel.topicGroup.skills);
   const skillCodes = allSelectedSkills.map((s) => s.code);
 
   const weakSkillCodes = student.conceptMastery
@@ -91,13 +104,13 @@ async function loadQuizContext(req: GenerateQuizRequest): Promise<{
     )
     .map((p) => p.skill.code);
 
-  const focalLetter = student.topicSelections[0].topicGroup.letter;
+  const focalLetter = selections[0].topicGroup.letter;
 
   return {
     grade: student.grade,
     topicGroupLetter: focalLetter,
     skillCodes,
-    difficulty: student.currentDifficulty,
+    difficulty: req.difficultyOverride ?? student.currentDifficulty,
     weakSkillCodes,
   };
 }

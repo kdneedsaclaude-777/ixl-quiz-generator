@@ -67,9 +67,12 @@ export function isWithinWindow(
   return cur >= s || cur < e;
 }
 
+// The daily quiz cap was removed per client request — unlimited generation.
+// `quizzesToday` stays in the signature (callers still pass it) but is unused;
+// only the practice-time window is enforced now.
 export function isPracticeAllowedNow(
   settings: ParentalSettingsView | null,
-  quizzesToday: number,
+  _quizzesToday: number,
   now: Date = new Date(),
 ): PracticeDecision {
   if (!settings) return { allowed: true };
@@ -89,14 +92,6 @@ export function isPracticeAllowedNow(
         windowEnd: settings.windowEnd,
       };
     }
-  }
-
-  if (typeof settings.maxQuizzesPerDay === "number" && quizzesToday >= settings.maxQuizzesPerDay) {
-    return {
-      allowed: false,
-      reason: "daily_limit_reached",
-      detail: `Today's quiz limit (${settings.maxQuizzesPerDay}) has been reached.`,
-    };
   }
 
   return { allowed: true };

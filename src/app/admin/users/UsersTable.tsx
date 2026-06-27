@@ -17,6 +17,33 @@ export type UserRow = {
   lastLogin: string | null;
 };
 
+// Shared dark-shell control styles (admin sub-theme).
+const INPUT_CLS =
+  "rounded-lg border px-3 py-1.5 text-sm text-white placeholder:text-[color:var(--shell-muted)] focus:outline-none focus:ring-2 focus:ring-[#A5B4FC]/40 border-[color:var(--shell-border)] bg-white/5";
+const SELECT_CLS =
+  "rounded-lg border px-2 py-1.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#A5B4FC]/40 border-[color:var(--shell-border)] bg-white/5";
+const BTN_PRIMARY =
+  "rounded-full bg-[#6366F1] px-3.5 py-1.5 font-semibold text-white hover:bg-[#4F46E5] disabled:opacity-50";
+const BTN_GHOST =
+  "rounded-full border border-[color:var(--shell-border)] bg-white/5 px-3.5 py-1.5 font-medium text-[color:var(--shell-text)] hover:bg-white/10 disabled:opacity-50";
+const BTN_XS_INDIGO =
+  "rounded-full bg-[#6366F1] px-2.5 py-1 text-xs font-semibold text-white hover:bg-[#4F46E5] disabled:opacity-50";
+
+// Tinted outline action chip (suspend/unsuspend/delete) in the dark shell.
+function ToneBtn({ color, onClick, disabled, children }: { color: string; onClick: () => void; disabled?: boolean; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="rounded-full border px-2.5 py-1 text-xs font-semibold disabled:opacity-50"
+      style={{ borderColor: `${color}66`, background: `${color}22`, color }}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function UsersTable({
   rows,
   page,
@@ -183,8 +210,11 @@ export default function UsersTable({
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+    <div className="space-y-3 text-[color:var(--shell-text)]">
+      <div
+        className="flex flex-col gap-3 rounded-2xl border p-3.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"
+        style={{ background: "var(--shell-card)", borderColor: "var(--shell-border)" }}
+      >
         <div className="flex flex-wrap items-center gap-2">
           <input
             type="search"
@@ -192,7 +222,7 @@ export default function UsersTable({
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Search name or email…"
             aria-label="Search users"
-            className="rounded border border-slate-500 bg-slate-700 px-3 py-1.5 text-sm text-white placeholder:text-slate-400"
+            className={INPUT_CLS}
           />
           <select
             aria-label="Filter by role"
@@ -201,7 +231,7 @@ export default function UsersTable({
             // "parent" when no ?role= is present, so stripping the param
             // sent "All roles" back to the parents view.
             onChange={(e) => setQs({ role: e.target.value })}
-            className="rounded border border-slate-500 bg-slate-700 px-2 py-1.5 text-sm text-white"
+            className={SELECT_CLS}
           >
             <option value="parent">Parents</option>
             <option value="tutor">Tutors</option>
@@ -214,7 +244,7 @@ export default function UsersTable({
             aria-label="Filter by status"
             value={status}
             onChange={(e) => setQs({ status: e.target.value === "all" ? null : e.target.value })}
-            className="rounded border border-slate-500 bg-slate-700 px-2 py-1.5 text-sm text-white"
+            className={SELECT_CLS}
           >
             <option value="all">All status</option>
             <option value="active">Active</option>
@@ -225,7 +255,7 @@ export default function UsersTable({
             aria-label="Filter by verified state"
             value={verified}
             onChange={(e) => setQs({ verified: e.target.value === "all" ? null : e.target.value })}
-            className="rounded border border-slate-500 bg-slate-700 px-2 py-1.5 text-sm text-white"
+            className={SELECT_CLS}
           >
             <option value="all">All verified</option>
             <option value="yes">Verified</option>
@@ -233,101 +263,92 @@ export default function UsersTable({
           </select>
         </div>
         <div className="flex items-center gap-2 text-sm">
-          <button
-            type="button"
-            onClick={() => setCreating(true)}
-            className="rounded bg-indigo-600 px-3 py-1.5 font-semibold text-white hover:bg-indigo-700"
-          >
+          <button type="button" onClick={() => setCreating(true)} className={BTN_PRIMARY}>
             + New user
           </button>
           <button
             type="button"
             onClick={bulkSuspend}
             disabled={selected.size === 0}
-            className="rounded border border-slate-500 bg-slate-700 px-3 py-1.5 font-medium text-slate-100 hover:bg-slate-600 disabled:opacity-40"
+            className={`${BTN_GHOST} disabled:opacity-40`}
           >
             Suspend selected ({selected.size})
           </button>
-          <button
-            type="button"
-            onClick={exportCsv}
-            className="rounded border border-slate-500 bg-slate-700 px-3 py-1.5 font-medium text-slate-100 hover:bg-slate-600"
-          >
+          <button type="button" onClick={exportCsv} className={BTN_GHOST}>
             Export CSV
           </button>
         </div>
       </div>
 
-      {error && <p className="rounded bg-rose-950/60 px-3 py-2 text-sm text-rose-200">{error}</p>}
+      {error && <p className="rounded-xl px-3 py-2 text-sm" style={{ background: "rgba(194,95,95,.15)", color: "#FCA5A5" }}>{error}</p>}
 
-      <div className="overflow-x-auto rounded-lg border border-slate-700 bg-slate-800">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-900/60 text-left text-xs uppercase tracking-wide text-slate-300">
-            <tr>
-              <th className="px-3 py-2">
-                <input
-                  type="checkbox"
-                  aria-label="Select all"
-                  checked={allSelected}
-                  onChange={() => setSelected(allSelected ? new Set() : new Set(rows.map((r) => r.id)))}
-                />
-              </th>
-              <th className="px-3 py-2">Name</th>
-              <th className="px-3 py-2">Email</th>
-              <th className="px-3 py-2 text-right">Children</th>
-              <th className="px-3 py-2">Status</th>
-              <th className="px-3 py-2">Last login</th>
-              <th className="px-3 py-2 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-700 text-slate-100">
-            {rows.map((r) => (
-              <tr key={r.id} className={r.status === "deleted" ? "opacity-60" : ""}>
-                <td className="px-3 py-2">
-                  <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggle(r.id)} aria-label={`Select ${r.name}`} />
-                </td>
-                <td className="px-3 py-2">
-                  <div className="font-medium">{r.name}</div>
-                  {!r.verified && <div className="text-[11px] text-amber-300">Unverified</div>}
-                </td>
-                <td className="px-3 py-2 font-mono text-xs">{r.email}</td>
-                <td className="px-3 py-2 text-right">{r.childrenCount}</td>
-                <td className="px-3 py-2"><StatusPill status={r.status} /></td>
-                <td className="px-3 py-2 text-xs text-slate-300">
-                  {r.lastLogin ? new Date(r.lastLogin).toLocaleDateString("en-US") : "—"}
-                </td>
-                <td className="px-3 py-2">
-                  <div className="flex justify-end gap-1">
-                    {r.status === "active" && (
-                      <button onClick={() => doAction(r.id, "impersonate")} disabled={busyId === r.id} className="rounded bg-indigo-600 px-2 py-1 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-50">Impersonate</button>
-                    )}
-                    {r.status === "active" && (
-                      <button onClick={() => doAction(r.id, "suspend")} disabled={busyId === r.id} className="rounded border border-amber-500 bg-amber-600/80 px-2 py-1 text-xs font-semibold text-white hover:bg-amber-600 disabled:opacity-50">Suspend</button>
-                    )}
-                    {r.status === "suspended" && (
-                      <button onClick={() => doAction(r.id, "unsuspend")} disabled={busyId === r.id} className="rounded border border-emerald-500 bg-emerald-600/80 px-2 py-1 text-xs font-semibold text-white hover:bg-emerald-600 disabled:opacity-50">Unsuspend</button>
-                    )}
-                    {r.status !== "deleted" && (
-                      <button onClick={() => setPendingDelete(r)} disabled={busyId === r.id} className="rounded border border-rose-500 bg-rose-600/80 px-2 py-1 text-xs font-semibold text-white hover:bg-rose-600 disabled:opacity-50">Delete</button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {rows.length === 0 && (
-              <tr><td colSpan={7} className="px-3 py-6 text-center text-slate-400">No users match.</td></tr>
-            )}
-          </tbody>
-        </table>
+      {/* Dark row-card list — header strip + one divided row per user. */}
+      <div className="overflow-x-auto rounded-2xl border" style={{ background: "var(--shell-card)", borderColor: "var(--shell-border)" }}>
+        <div className="min-w-[760px]">
+          <div
+            className="grid items-center gap-2.5 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-[color:var(--shell-muted)]"
+            style={{ gridTemplateColumns: "28px 1.4fr 1.6fr 70px 110px 90px 220px", borderBottom: "1px solid var(--shell-border)" }}
+          >
+            <input
+              type="checkbox"
+              aria-label="Select all"
+              checked={allSelected}
+              onChange={() => setSelected(allSelected ? new Set() : new Set(rows.map((r) => r.id)))}
+              className="accent-[#6366F1]"
+            />
+            <span>Name</span>
+            <span>Email</span>
+            <span className="text-right">Children</span>
+            <span>Status</span>
+            <span>Last login</span>
+            <span className="text-right">Actions</span>
+          </div>
+          {rows.map((r) => (
+            <div
+              key={r.id}
+              className={`grid items-center gap-2.5 px-4 py-3 text-sm ${r.status === "deleted" ? "opacity-60" : ""}`}
+              style={{ gridTemplateColumns: "28px 1.4fr 1.6fr 70px 110px 90px 220px", borderBottom: "1px solid var(--shell-border)" }}
+            >
+              <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggle(r.id)} aria-label={`Select ${r.name}`} className="accent-[#6366F1]" />
+              <div>
+                <div className="font-semibold text-white">{r.name}</div>
+                {!r.verified && <div className="text-[11px]" style={{ color: "var(--cm-gold)" }}>Unverified</div>}
+              </div>
+              <div className="truncate font-mono text-xs text-[color:var(--shell-muted)]">{r.email}</div>
+              <div className="text-right font-mono text-xs">{r.childrenCount}</div>
+              <div><StatusPill status={r.status} /></div>
+              <div className="text-xs text-[color:var(--shell-muted)]">
+                {r.lastLogin ? new Date(r.lastLogin).toLocaleDateString("en-US") : "—"}
+              </div>
+              <div className="flex justify-end gap-1">
+                {r.status === "active" && (
+                  <button onClick={() => doAction(r.id, "impersonate")} disabled={busyId === r.id} className={BTN_XS_INDIGO}>Impersonate</button>
+                )}
+                {r.status === "active" && (
+                  <ToneBtn color="#E8A317" onClick={() => doAction(r.id, "suspend")} disabled={busyId === r.id}>Suspend</ToneBtn>
+                )}
+                {r.status === "suspended" && (
+                  <ToneBtn color="#4E9F7B" onClick={() => doAction(r.id, "unsuspend")} disabled={busyId === r.id}>Unsuspend</ToneBtn>
+                )}
+                {r.status !== "deleted" && (
+                  <ToneBtn color="#C25F5F" onClick={() => setPendingDelete(r)} disabled={busyId === r.id}>Delete</ToneBtn>
+                )}
+              </div>
+            </div>
+          ))}
+          {rows.length === 0 && (
+            <div className="px-4 py-6 text-center text-sm text-[color:var(--shell-muted)]">No users match.</div>
+          )}
+        </div>
       </div>
 
       <Pagination page={page} totalPages={totalPages} basePath="/admin/users" />
 
       {creating && (
         <div role="dialog" aria-modal className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={(e) => { if (e.target === e.currentTarget) setCreating(false); }}>
-          <div className="w-full max-w-md rounded-xl border border-slate-700 bg-slate-800 p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-slate-100">Add a new user</h3>
-            <p className="mt-1 text-xs text-slate-400">
+          <div className="w-full max-w-md rounded-2xl border p-6 shadow-2xl" style={{ background: "var(--shell-card)", borderColor: "var(--shell-border)" }}>
+            <h3 className="font-display text-2xl text-white">Add a new user</h3>
+            <p className="mt-1 text-xs text-[color:var(--shell-muted)]">
               Auto-verified — they can log in immediately with the password you set.
             </p>
             <form
@@ -335,12 +356,8 @@ export default function UsersTable({
               className="mt-4 space-y-3"
             >
               <label className="block text-sm">
-                <span className="text-slate-200">Role</span>
-                <select
-                  value={nuRole}
-                  onChange={(e) => setNuRole(e.target.value as NewRole)}
-                  className="mt-1 w-full rounded border border-slate-500 bg-slate-700 px-3 py-2 text-sm text-white"
-                >
+                <span className="mb-1 block font-medium text-[color:var(--shell-text)]">Role</span>
+                <select value={nuRole} onChange={(e) => setNuRole(e.target.value as NewRole)} className={MODAL_INPUT}>
                   <option value="parent">Parent</option>
                   <option value="tutor">Tutor</option>
                   {isSuperadmin && <option value="orgadmin">Org Admin</option>}
@@ -348,44 +365,24 @@ export default function UsersTable({
                 </select>
               </label>
               <label className="block text-sm">
-                <span className="text-slate-200">Full name</span>
-                <input
-                  value={nuName}
-                  onChange={(e) => setNuName(e.target.value)}
-                  required
-                  autoComplete="name"
-                  className="mt-1 w-full rounded border border-slate-500 bg-slate-700 px-3 py-2 text-sm text-white"
-                />
+                <span className="mb-1 block font-medium text-[color:var(--shell-text)]">Full name</span>
+                <input value={nuName} onChange={(e) => setNuName(e.target.value)} required autoComplete="name" className={MODAL_INPUT} />
               </label>
               <label className="block text-sm">
-                <span className="text-slate-200">Email</span>
-                <input
-                  type="email"
-                  value={nuEmail}
-                  onChange={(e) => setNuEmail(e.target.value)}
-                  required
-                  autoComplete="off"
-                  className="mt-1 w-full rounded border border-slate-500 bg-slate-700 px-3 py-2 text-sm text-white"
-                />
+                <span className="mb-1 block font-medium text-[color:var(--shell-text)]">Email</span>
+                <input type="email" value={nuEmail} onChange={(e) => setNuEmail(e.target.value)} required autoComplete="off" className={MODAL_INPUT} />
               </label>
               <label className="block text-sm">
-                <span className="text-slate-200">Initial password</span>
-                <input
-                  type="text"
-                  value={nuPassword}
-                  onChange={(e) => setNuPassword(e.target.value)}
-                  required
-                  autoComplete="off"
-                  className="mt-1 w-full rounded border border-slate-500 bg-slate-700 px-3 py-2 text-sm text-white"
-                />
-                <span className="mt-1 block text-xs text-slate-400">
+                <span className="mb-1 block font-medium text-[color:var(--shell-text)]">Initial password</span>
+                <input type="text" value={nuPassword} onChange={(e) => setNuPassword(e.target.value)} required autoComplete="off" className={MODAL_INPUT} />
+                <span className="mt-1 block text-xs text-[color:var(--shell-muted)]">
                   ≥8 chars, 1 uppercase, 1 number. Share it with them; they can change it later.
                 </span>
               </label>
-              {error && <p className="rounded bg-rose-950/60 px-3 py-2 text-sm text-rose-200">{error}</p>}
+              {error && <p className="rounded-xl px-3 py-2 text-sm" style={{ background: "rgba(194,95,95,.15)", color: "#FCA5A5" }}>{error}</p>}
               <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={() => setCreating(false)} className="rounded border border-slate-500 bg-slate-700 px-3 py-1.5 text-sm font-medium text-slate-100 hover:bg-slate-600">Cancel</button>
-                <button type="submit" disabled={savingNew} className="rounded bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50">
+                <button type="button" onClick={() => setCreating(false)} className={BTN_GHOST}>Cancel</button>
+                <button type="submit" disabled={savingNew} className={BTN_PRIMARY}>
                   {savingNew ? "Creating…" : "Create user"}
                 </button>
               </div>
@@ -396,12 +393,12 @@ export default function UsersTable({
 
       {pendingDelete && (
         <div role="dialog" aria-modal className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={(e) => { if (e.target === e.currentTarget) setPendingDelete(null); }}>
-          <div className="w-full max-w-sm rounded-xl border border-slate-700 bg-slate-800 p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-slate-100">Delete {pendingDelete.name}?</h3>
-            <p className="mt-2 text-sm text-slate-300">
+          <div className="w-full max-w-sm rounded-2xl border p-6 shadow-2xl" style={{ background: "var(--shell-card)", borderColor: "var(--shell-border)" }}>
+            <h3 className="font-display text-2xl text-white">Delete {pendingDelete.name}?</h3>
+            <p className="mt-2 text-sm text-[color:var(--shell-muted)]">
               {pendingDelete.role === "student" ? (
                 <>
-                  This is a <span className="font-semibold text-amber-300">student login account</span>.
+                  This is a <span className="font-semibold" style={{ color: "var(--cm-gold)" }}>student login account</span>.
                   Deleting it removes the login but the student&apos;s profile + quiz history stay
                   attached to their parent. They&apos;ll need a new login to play themselves.
                 </>
@@ -413,8 +410,8 @@ export default function UsersTable({
               )}
             </p>
             <div className="mt-5 flex justify-end gap-2">
-              <button type="button" onClick={() => setPendingDelete(null)} className="rounded border border-slate-500 bg-slate-700 px-3 py-1.5 text-sm font-medium text-slate-100 hover:bg-slate-600">Cancel</button>
-              <button type="button" onClick={doDelete} disabled={busyId !== null} className="rounded bg-rose-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-50">{busyId ? "Deleting…" : "Delete"}</button>
+              <button type="button" onClick={() => setPendingDelete(null)} className={BTN_GHOST}>Cancel</button>
+              <button type="button" onClick={doDelete} disabled={busyId !== null} className="rounded-full bg-[#C25F5F] px-3.5 py-1.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50">{busyId ? "Deleting…" : "Delete"}</button>
             </div>
           </div>
         </div>
@@ -423,12 +420,11 @@ export default function UsersTable({
   );
 }
 
+const MODAL_INPUT =
+  "w-full rounded-lg border px-3 py-2 text-sm text-white placeholder:text-[color:var(--shell-muted)] focus:outline-none focus:ring-2 focus:ring-[#A5B4FC]/40 border-[color:var(--shell-border)] bg-white/5";
+
 function StatusPill({ status }: { status: UserRow["status"] }) {
-  const palette = status === "active"
-    ? "bg-emerald-900/40 text-emerald-200 border-emerald-700/50"
-    : status === "suspended"
-      ? "bg-amber-900/40 text-amber-200 border-amber-700/50"
-      : "bg-slate-700 text-slate-300 border-slate-600";
-  return <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${palette}`}>{status}</span>;
+  const cls = status === "active" ? "cm-pill mint" : status === "suspended" ? "cm-pill amber" : "cm-pill";
+  return <span className={cls} style={{ height: 22, fontSize: 11 }}>{status}</span>;
 }
 

@@ -47,7 +47,7 @@ export async function POST(req: Request): Promise<Response> {
 
   await sendSms({
     to: phone,
-    body: `Your IXL Quiz verification code is ${code}. It expires in ${CODE_TTL_MIN} minutes.`,
+    body: `Your QuizSpark verification code is ${code}. It expires in ${CODE_TTL_MIN} minutes.`,
   });
 
   // Dev only: hand the code back so the UI can autofill / display it.

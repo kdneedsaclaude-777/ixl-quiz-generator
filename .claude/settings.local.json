@@ -43,7 +43,21 @@
       "Bash(sed -i '' 's|<p className=\"mt-1 text-sm text-slate-400\">|<p className=\"mt-1 text-sm text-slate-600 dark:text-slate-400\">|g' src/app/admin/dashboard/page.tsx src/app/admin/analytics/page.tsx src/app/admin/content/page.tsx src/app/admin/users/page.tsx src/app/admin/students/page.tsx)",
       "Bash(/usr/bin/curl -sS -o /tmp/404.html -w '  /random-missing-url  %{http_code}\\\\n' http://localhost:3000/random-missing-url)",
       "Bash(/usr/bin/curl -sS -X PATCH -H 'Content-Type: application/json' -d '{\"darkMode\":true}' -w '  PATCH anon → %{http_code}\\\\n' http://localhost:3000/api/preferences/dark-mode)",
-      "Bash(/usr/bin/curl -sS -c /tmp/admin.cookies http://localhost:3000/api/auth/csrf)"
+      "Bash(/usr/bin/curl -sS -c /tmp/admin.cookies http://localhost:3000/api/auth/csrf)",
+      "Bash(grep -rnil \"avatar\\\\|coin shop\\\\|daily challenge\\\\|leaderboard\\\\|streak.freeze\\\\|streak freeze\" CLAUDE.md demo-guide/)",
+      "Bash(ls ~/.claude/plans/)",
+      "Bash(awk '/^model Student \\\\{/,/^\\\\}/' prisma/schema.prisma)",
+      "Bash(awk '/^model TutorAssignment \\\\{/,/^\\\\}/' prisma/schema.prisma)",
+      "Bash(npx tsc *)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(node -e \"const{PrismaClient}=require\\('@prisma/client'\\);const p=new PrismaClient\\(\\);console.log\\('tutorSession:',typeof p.tutorSession\\);console.log\\('homeworkAssignment:',typeof p.homeworkAssignment\\);process.exit\\(0\\)\")",
+      "Bash(sed -n '47,61p' prisma/schema.prisma)",
+      "Bash(sed -n '160,170p' prisma/schema.prisma)",
+      "Bash(npx vitest *)",
+      "Bash(/bin/ls)",
+      "Read(//Users/kiaansharma/quiz-app/**)",
+      "Bash(tee /tmp/parent_ls.txt)",
+      "Bash(echo \"---EXIT $?---\")"
     ],
     "additionalDirectories": [
       "/private/tmp"

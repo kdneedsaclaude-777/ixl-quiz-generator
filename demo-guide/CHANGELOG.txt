@@ -9,6 +9,636 @@
 
 
 ════════════════════════════════════════════════════════════════════════
+  v2.13.0  ·  2026-06-26  ·  "Free build — billing muted (reversible)"
+════════════════════════════════════════════════════════════════════════
+
+  Per request: ship a FREE build for initial team testing, with the entire paid
+  model muted (NOT deleted) behind one switch. Flip it back anytime to restore
+  the $5/mo product exactly. Build passes; 199/199 tests; switch verified to
+  flip behavior both ways + billing endpoints 404 at runtime.
+
+  MASTER BILLING SWITCH — NEXT_PUBLIC_BILLING_ENABLED
+   • New billingEnabled() in src/lib/plan.ts. When "false": isPaid() returns true
+     for everyone, which cascades through every gate (canGenerateQuiz,
+     canAddChild) and every UI paywall (isStudentPaid / planFeatures) — so all
+     features unlock and all upsells/locked tiles disappear. Default (unset/true)
+     = the original paid model, unchanged.
+   • Upgrade nav ("QuizSpark Plus") and admin "Billing" nav hidden when off.
+   • /parent/upgrade → redirects to dashboard; /admin/billing → redirects to
+     admin dashboard when off.
+   • /api/billing/checkout and /portal return 404 when off (no accidental charge
+     path). Webhook left intact (harmless — no events arrive).
+   • instrumentation.ts skips Stripe warnings and logs "FREE build" when off.
+   • Documented in .env / .env.example. Nothing in the Stripe/paywall code was
+     deleted — this is a clean mute.
+
+════════════════════════════════════════════════════════════════════════
+  v2.12.0  ·  2026-06-26  ·  "Publishing prep — legal pages + launch docs"
+════════════════════════════════════════════════════════════════════════
+
+  Everything host-independent needed to publish. Build passes (exit 0);
+  199/199 tests; new public pages smoke-verified (200, reachable without auth).
+
+  LEGAL / COMPLIANCE PAGES (real URLs for the Play Console)
+   • /privacy — app-specific privacy policy (kids-app / COPPA aware): what we
+     collect, parental control, no ad-targeting/no data sale, retention &
+     deletion, service providers (Stripe/email/host/AI). DRAFT for legal review.
+   • /terms — subscription billing, acceptable use, disclaimers, governing law.
+   • Both public (outside the auth-gated route prefixes), styled in the design
+     system, linked from a new global footer (© + Privacy + Terms + Contact).
+
+  DISCOVERABILITY
+   • src/app/sitemap.ts — public pages only (home, auth, privacy, terms).
+   • robots.txt already disallows app/admin/api surfaces.
+
+  LAUNCH DOCS
+   • docs/API_KEYS.md — the shopping list: every key/account, where to get it,
+     which env var, required vs optional (DB, NEXTAUTH_SECRET, app URL, Stripe
+     ×3, email, CRON_SECRET, Anthropic).
+   • docs/PLAY_STORE_LISTING.md — store copy (short/full/what's-new), Data Safety
+     answers, IARC content-rating answers, Families-policy notes, asset specs.
+   • DEPLOY.md — extended with Stripe webhook setup, live smoke test, a Vercel
+     section, and Phase B (PWABuilder → .aab → assetlinks → Play Console).
+
+════════════════════════════════════════════════════════════════════════
+  v2.11.0  ·  2026-06-25  ·  "Deploy hardening + TWA-ready"
+════════════════════════════════════════════════════════════════════════
+
+  Production-readiness pass after a full audit (deploy/infra, security,
+  runtime correctness). Build passes (exit 0); 199/199 tests; new endpoints
+  smoke-verified. No feature behaviour changed — only hardening + prep.
+
+  SECURITY HEADERS (next.config.ts)
+   • Every response now sends X-Frame-Options: SAMEORIGIN (keeps the same-origin
+     PDF-tool iframe working), X-Content-Type-Options: nosniff, Referrer-Policy,
+     Permissions-Policy (camera/mic/geo/topics off), and HSTS.
+   • Strict CSP intentionally deferred (inline theme script needs a nonce) —
+     tracked in the deploy guide.
+
+  FAIL-FAST CONFIG (src/instrumentation.ts)
+   • On production boot, refuses to start if NEXTAUTH_SECRET / DATABASE_URL /
+     public app URL are missing, or if PUBLIC_TEST_MODE=true. Warns (doesn't
+     block) when Stripe, email, or CRON_SECRET aren't configured. Dev + build
+     are untouched.
+
+  PUBLIC_TEST_MODE hard-off
+   • Auto-verify-on-signup is now impossible in production even if the env var
+     leaks in (src/app/api/auth/signup) — belt-and-suspenders with the boot check.
+
+  OPS ENDPOINTS
+   • GET /api/health → 200 {status:"ok",db:"up"} with a DB ping (503 if DB down)
+     for load-balancer / uptime probes.
+   • /robots.txt → indexes public pages, disallows app/admin/api surfaces.
+
+  MOBILE / TWA-READY (Google Play prep)
+   • manifest.webmanifest (standalone, theme #5C7BAE), app icon (/icon.svg,
+     any + maskable), viewport + light/dark theme-color, apple-web-app meta,
+     metadataBase + title template. One deploy away from a PWABuilder/Bubblewrap
+     TWA package.
+
+════════════════════════════════════════════════════════════════════════
+  v2.10.0  ·  2026-06-25  ·  "Growth & retention bundle"
+════════════════════════════════════════════════════════════════════════
+
+  Conversion + retention features on top of the ship build. Production
+  `next build` passes (exit 0); 199/199 tests; production source typechecks
+  clean. New env documented in .env.example.
+
+  PAYWALL ANALYTICS (PaywallEvent model)
+   • Every paywall hit, checkout start, and upgrade is logged (logPaywallEvent)
+     from the quiz-generate gate, add-child gate, and the checkout route.
+   • /admin/billing now has a Conversion funnel panel (last 30 days): paywall
+     hits → checkouts started → upgrades → wall-to-paid conversion rate, plus a
+     by-reason breakdown (daily limit, locked Real Test, locked add-child, etc.).
+
+  FREE TRIAL (optional)
+   • Set STRIPE_TRIAL_DAYS=N to start new subs with an N-day free trial
+     (subscription_data.trial_period_days). The upgrade page shows a
+     "Start N-day free trial" CTA and the trial terms.
+
+  ANNUAL PLAN (optional)
+   • Set STRIPE_PRICE_ID_ANNUAL to enable a Monthly/Yearly toggle on the
+     upgrade page; checkout passes the chosen interval (falls back to monthly).
+
+  STREAK-RISK REMINDER EMAILS
+   • Pure streakAtRisk() helper (unit-tested) flags a child with a live streak
+     who hasn't practised yet today (breaks at midnight). Wired into the
+     existing /api/cron/notifications run (CRON_SECRET), deduped one nudge per
+     child per day. Opt-out via a new "Streak reminders" toggle in parent
+     notification settings (NotificationSettings.streakReminder, default on).
+     Floor tunable via STREAK_REMINDER_MIN_DAYS.
+
+  AI GENERATOR PROXY — /api/generate-questions
+   • The embedded PDF→questions tool (/admin/import) now calls a same-origin
+     server proxy instead of api.anthropic.com directly. Fixes CORS and keeps
+     the API key server-side; admin-session gated + rate-limited. Returns a
+     clear 503 until ANTHROPIC_API_KEY is set.
+
+════════════════════════════════════════════════════════════════════════
+  v2.9.0  ·  2026-06-23  ·  "Ship hardening + payment receipts & notices"
+════════════════════════════════════════════════════════════════════════
+
+  Production-hardened the ship build and added billing receipts +
+  notifications. Production `next build` passes (exit 0); 194/194 tests;
+  full all-roles smoke green; new surfaces verified with seeded data.
+
+  PAYMENTS — REAL ONLY
+   • The simulated upgrade is off by default (opt-in BILLING_DEV_SIMULATE=1,
+     never in production, ignored once real keys are set). Shipped build =
+     real Stripe only; Plus is never granted without a real payment.
+   • .env.example documents every required var.
+
+  RECEIPTS + EVENTS (Payment + Notification models)
+   • Webhook invoice.payment_succeeded → records a Payment (amount, currency,
+     hosted receipt URL, period), idempotent per invoice.
+   • Immediately drops an in-app Notification to the parent ("You're on
+     QuizSpark Plus") — shown as a dismissible banner on the parent dashboard
+     (mark-read via /api/notifications/read).
+   • Sends the advanced "Welcome to QuizSpark Plus" email (notifyPlusWelcome),
+     deduped per subscription.
+   • The dev-simulate path mirrors all three side-effects for local dry-runs.
+
+  ADMIN BILLING (superadmin) — /admin/billing
+   • Who paid vs free: every parent with a PAID/FREE badge, renew date, and
+     last payment (amount + receipt link). KPIs: paying parents, on-free,
+     MRR, all-time collected. Plus a receipt log of recent payments.
+
+════════════════════════════════════════════════════════════════════════
+  v2.8.0  ·  2026-06-23  ·  "QuizSpark — freemium + Stripe billing"
+════════════════════════════════════════════════════════════════════════
+
+  Rebranded to QuizSpark and added the free/paid product. Typecheck clean;
+  194/194 tests pass; freemium flow verified end-to-end (free wall →
+  upgrade → unlimited).
+
+  REBRAND
+   • App name "Concept Mastery" → "QuizSpark" everywhere (logo wordmark, page
+     titles, emails, the app_name flag). The logo tagline is now
+     "BY CONCEPT MASTERY" — the product is QuizSpark, built for Concept
+     Mastery. IXL skill refs, references/, and the design-bundle folder are
+     untouched (different strings).
+
+  PLANS / GATING (src/lib/plan.ts)
+   • Plan lives on the parent account: User.plan ("free" | "paid") + Stripe
+     fields (migration add_subscription_plan). Gating enforced for
+     parent-owned students; tutor/admin-managed students are ungated.
+   • FREE: 1 quiz per DAY, practice only, 1 child profile.
+   • PAID-ONLY ($5/mo): unlimited quizzes, Real Test mode, weekly
+     leaderboard, full progress & history, unlimited children.
+   • Enforced server-side: /api/quiz/generate (daily cap, runs after the
+     reuse path; test mode 402), /api/onboarding (2nd+ child 402), child
+     home (leaderboard locked tile), child progress (locked upsell), test
+     route (defense-in-depth redirect). Paywall prompts on the Start button
+     + locked cards link to the upgrade page.
+
+  STRIPE ($5/mo, real, env-gated)
+   • /api/billing/checkout (Stripe Checkout) → /api/billing/webhook
+     (subscription lifecycle → User.plan) → /api/billing/portal
+     (manage/cancel). A dev-only simulated upgrade runs when no keys are
+     set, so the whole flow is testable now; production without keys errors
+     cleanly (never silently grants Plus).
+   • /parent/upgrade pricing page (Free vs Plus, checkout/manage) + a
+     "QuizSpark Plus" nav entry + plan-aware UI.
+   • GO-LIVE: set STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRICE_ID
+     (a recurring $5/mo price), and NEXT_PUBLIC_APP_URL. (Webhook endpoint:
+     /api/billing/webhook.)
+
+  DEMO
+   • parent@demo.local = Paid (full app). free@demo.local / Free1234! with
+     child "Sam" = Free (shows the daily wall + paywall). Logins seeded via
+     scripts/seed-demo-plans.ts.
+
+════════════════════════════════════════════════════════════════════════
+  v2.7.0  ·  2026-06-05  ·  "PDF question import bridge"
+════════════════════════════════════════════════════════════════════════
+
+  Connected the external PDF Question Generator (a Claude artifact that
+  emits a `cmQuestionsReady` event) to the app: its questions now become a
+  real, playable practice quiz. Typecheck clean; 194/194 tests pass;
+  verified end-to-end (import → quiz #N created → plays at /quiz/N).
+
+  APP SIDE (superadmin)
+   • POST /api/quiz/import — maps the generator's shape onto the app's
+     Question model: mcq → keyed-option MCQ; true_false → 2-option MCQ
+     (clean key-match grading); fill_in_blank → short_answer (text match,
+     since PDF answers are words not numbers). Auth + ownership checked,
+     count capped at 50, attached to a representative enabled skill and
+     tagged generatedBy:"imported"; grades + renders through the normal
+     runner/submit pipeline.
+   • /admin/import — a superadmin-only console page (dark shell, added to
+     the admin nav) that EMBEDS the generator in an iframe and listens for
+     its postMessage / `cmQuestionsReady` event — so "Send to app" is one
+     click, no copy-paste. Pick any student, generate, send → the quiz is
+     created and linked. A paste-JSON fallback remains for resilience.
+     (The earlier parent-side Import page was removed — superadmin only.)
+   • The generator is served at /pdf-question-generator.html (public/) so
+     the iframe can load it same-origin.
+
+  GENERATOR ARTIFACT
+   • tools/pdf-question-generator.html (+ public/ copy) — rebranded to the
+     Concept Mastery look (warm paper, Instrument Serif headings, steel-
+     blue/gold/coral, soft cards, branded mark) and polished. "Send to app"
+     fires the CustomEvent AND postMessages parent + opener, so the bridge
+     works embedded (the admin iframe), standalone, or via window.open.
+
+════════════════════════════════════════════════════════════════════════
+  v2.6.0  ·  2026-06-05  ·  "Gamification finish + design everywhere"
+════════════════════════════════════════════════════════════════════════
+
+  Finished all gamification work and rolled the design system across every
+  remaining screen. App typecheck clean; 194/194 tests pass; every restyled
+  route verified rendering behind auth.
+
+  GAMIFICATION (finished)
+   • XP economy corrected: calculateXp now = the score percent (100% = 100 XP
+     = one level), so level milestones, level titles and the +20–50 bonuses
+     are all meaningfully paced (Level 5 ≈ 5 quizzes, Level 10 ≈ 10) instead
+     of a perfect quiz jumping 10 levels. (Was 10× — off vs its own contract.)
+   • Demo data seed (scripts/seed-demo-gamification.ts, idempotent, demo
+     students only): Ben → Level 11 "Math Whiz", 12-day streak, 7 badges;
+     Ada → Level 6, 7-day streak, 4 badges. Populates XP/level/streak, the
+     weekly leaderboard (Ben #1 family + cohort), last-quiz, parent score
+     sparks, weak-topics / daily-challenge / quick-pick, and earned badges —
+     so every gamification surface shows real numbers in a demo.
+   • Real-test timer hardened: new Quiz.testStartedAt stamped exactly once
+     (atomic conditional update) so reloading the intake can't reset the
+     countdown; submit clocks from it; the runner resumes the real remaining
+     time. (Closes the deferred follow-up from v2.5.0.)
+
+  DESIGN EVERYWHERE (~50 screens, per-area variation)
+   • Student: the "Me"/account tab → emoji profile header + settings cards;
+     progress → data-forward stat tiles + cm-bar topic mastery.
+   • Auth: signup / forgot / reset / verify / claim → branded AuthCard with a
+     fitting accent each (welcoming mint, calm security, status confirmation,
+     playful claim) + cm-field inputs.
+   • Admin: every table / form / filter / "new" page → the dark slate shell
+     (shell-card surfaces, indigo accents, serif headings, mono ids, dark
+     row-card tables). Logic/pagination/search/CSV/impersonation preserved.
+   • Tutor: students list → mint cohort cards; student detail → profile +
+     sectioned cards (mint accent, distinct from the parent layout).
+   • Parent settings: account + notifications forms → titled cm-card sections
+     (coral danger accent on delete, pill toggles).
+   • System + Live: maintenance / 404 / error → calm branded; the live-quiz
+     flow → high-energy game-show variant (bold serif, coral CTAs) — the most
+     playful corner, still on cm-* tokens.
+
+  VERIFICATION
+   • Full typecheck clean across all changed files; 194/194 unit tests pass;
+     authed smoke of every restyled route (student / auth / admin / tutor /
+     parent-settings / live / system) → all 200 (404 redirect as expected).
+   • Production `next build` intentionally deferred during the live client
+     demo (dev compiler validated every route on-demand); run when convenient.
+
+════════════════════════════════════════════════════════════════════════
+  v2.5.0  ·  2026-06-03  ·  "Review fixes + Generator + Real-test + gamification"
+════════════════════════════════════════════════════════════════════════
+
+  Client review round 2: the 6 flagged items fixed, the two net-new flows
+  built for real, and a gamification expansion. Everything wired to real
+  data; 194/194 unit tests pass; app typecheck clean. Verified end-to-end
+  (generate → submit → itemized XP + badges → results) behind auth.
+
+  REVIEW FIXES
+   • Home is the engagement HUB: coral 86px "Start practice", resume-in-
+     progress tile, Daily Challenge (targets the weakest enabled topic),
+     Quick-Pick recent topics, assigned homework + real-test cards. The
+     floating bottom tab bar (StudentTabBar) is finally mounted (it was
+     dead code) and suppressed on quiz/test/select flows.
+   • Back chevron removed from root tabs (Progress/Me); a shared
+     src/lib/child-nav.ts is the single source of truth for "root tab".
+   • XP card contrast → WCAG AA: gradient darkened to cm-blue-600 →
+     kid-violet-700 (new token), labels pure white (5.66:1–7.8:1). Same
+     gradient applied to the results header for consistency.
+   • Locked badges show category + "🔑 how to unlock" (from the real
+     detection rule) instead of "???"; only the icon dims, text stays
+     legible. One shared badge catalog (src/lib/domain/badge-catalog.ts)
+     replaces 3 duplicated lists; a drift test guards it vs the seed.
+   • Score graph: Spark gained opt-in domain/gridlines/% axis props
+     (backward-compatible); the parent 7-day card now shows a 0/50/100%
+     scale so it's unambiguously a percentage.
+   • Onboarding is a real 3-step wizard (setup → review → "X is ready"
+     success with CTAs); DiagnosticQuiz reskinned to brand tokens.
+
+  GENERATOR (net-new) — /parent/child/[id]/quiz/new
+   • Responsive manual quiz builder (mobile + desktop live-preview rail):
+     pick topics / count / difficulty / mode. The live preview calls the
+     SAME buildBuckets engine generation uses, so it can't drift.
+   • /api/quiz/generate extended (back-compatible) with topicGroupIds /
+     topicLetter / difficulty / mode; all validated server-side against
+     grade + active + parental locks; difficulty + count clamped.
+   • /api/quiz/preview returns the exact per-skill distribution.
+
+  REAL-TEST (net-new) — proctored test mode
+   • 5 screens: intake → no-feedback questions (flag + navigator) →
+     submit-confirm → locked result. Answers are never shipped to the
+     client and stay hidden on results until a parent unlocks review
+     (/api/quiz/[id]/review-unlock). Quiz.mode/timeLimitSec/timeUsedSec/
+     reviewUnlocked/flaggedQuestionIds added (non-destructive migration).
+     speed_demon badge suppressed for tests; the adaptive engine + XP
+     still run.
+
+  GAMIFICATION EXPANSION
+   • 15 badges total (8 new): streak 3/14/30, Level 5/10, Test Ace,
+     Daily Challenge, Centurion — with 2 new categories (Levels, Tests).
+   • XP bonuses with an itemized results reveal: base + perfect (+25),
+     streak (+5/day, cap +50), first-quiz-of-day (+20), daily challenge
+     (+30), comeback (+30), test (+40). All capped/gated so XP can't be
+     farmed. Itemized XPLog rows (XPLog.quizId added) let results
+     reconstruct the exact breakdown.
+   • Level titles (Math Rookie → Math Mythic) replace the bogus
+     "Multiplier"; results celebrates a rank-up. Shown on home, results,
+     parent child page, tutor roster.
+   • Weekly XP leaderboard (new "leaderboard" flag): student home tile
+     ("You're #2 this week") + tutor cohort board. Scoped to family /
+     tutor-cohort only (privacy: cohort shows first names; the member
+     query is the privacy boundary — no cross-family leakage), resets
+     weekly so newcomers stay competitive.
+
+  HARDENING (from an adversarial self-review)
+   • Quiz submit is now atomic: a conditional status claim
+     (updateMany where status≠completed) closes the double-submit /
+     concurrent-retry double-award window. Badge writes are decoupled
+     (best-effort) so a duplicate can't roll back the XP write.
+   • Generate dedupe scoped to genuinely-adaptive quizzes so the plain
+     "new quiz" can never reuse (and inherit the bonus of) a Daily
+     Challenge. Malformed-JSON bodies return 400, not 500.
+   • Results XP reconstruction uses cumulative XPLog up to the quiz, so
+     revisiting an old result still shows the correct level transition.
+
+  KNOWN FOLLOW-UP
+   • Real-test timer can be reset by reloading the intake (start re-stamps
+     startedAt). Needs a one-time start stamp (a status state or a
+     testStartedAt column) — deferred to avoid a mid-demo migration.
+
+════════════════════════════════════════════════════════════════════════
+  v2.4.0  ·  2026-06-02  ·  "Pixel replicas — every role screen"
+════════════════════════════════════════════════════════════════════════
+
+  Built the per-screen pixel replicas the v2.3.0 foundation enabled.
+  Every screen below is a faithful rebuild of its mockup in
+  concept-mastery-math-quiz-generator/project/screens/, wired to REAL
+  data (no mock values) and verified live behind auth.
+
+  SHELLS (new src/components/layouts/SidebarShell.tsx)
+   • One left-sidebar app shell, ported from parent.jsx / admin.jsx.
+     tone="light" (white + steel-blue active) and tone="dark" (slate
+     #0B1220 shell). New accent="mint" option for the tutor.
+   • Parent, Tutor (mint), and Admin (dark) layouts now use it — replaced
+     the old top RoleNav. Mobile collapses to a top bar + tab strip.
+   • Icons: ported the design's inline-SVG set (CMIcon) + added
+     layers/download/search/grid/eye for the admin/org screens.
+
+  STUDENT  (full-bleed phone shell + floating bottom tab bar)
+   • Home, Badges, Progress, quiz runner (inline practice feedback),
+     and the gradient animated results reveal — all design-matched.
+
+  PARENT
+   • Dashboard (mobile): "This week" Spark card + YOUR KIDS cards with
+     per-kid emoji avatar, 7-day average, mini topic bars, weak/assigned
+     pills. Real quizzes-this-week + per-child rollups.
+   • Child detail (desktop): breadcrumb, emoji header, 4 real KPI tiles
+     (avg last-10 / quizzes this week / streak / skills mastered),
+     score-trend Spark, weak-topics bars, compact quiz history, and the
+     parental-controls form (reskinned to cm-card).
+   • Children list: emoji + cm-card grid.
+
+  TUTOR  (mint cohort dashboard)
+   • "Your cohort" header, 4 KPI cards (assigned / cohort avg / quizzes /
+     needs-attention), and a 3-up student grid with emoji avatars,
+     live-now dot, alert pills, score + last-5 Spark. loadTutorStudents()
+     now returns each student's level + last-5 trend.
+
+  ADMIN  (dark slate shell)
+   • PLATFORM dashboard: 6 KPI tiles (parents/tutors/admins/students/
+     quizzes/done-24h), quizzes-per-day CSS bar chart, avg-score-per-grade
+     bars, recent completions feed — all from real counts.
+
+  AUTH / ONBOARDING
+   • Login: role-tabbed segmented control (honest per-role hint — login is
+     one shared form), serif "Welcome back.", and an "Are you a student?"
+     card → the avatar picker.
+   • /child/select: the "Who's playing?" emoji-avatar grid.
+   • Onboarding: wizard chrome (progress, Step·Topics pill, serif prompt)
+     + topic-group cards with letter badge, real skill counts, and the
+     picked-state blue ring. All existing form state/logic preserved.
+
+  VERIFICATION
+   • Production build clean. App-source typecheck clean (only pre-existing
+     test-file type noise remains, untouched).
+   • Authed live smoke (parent/tutor/admin/child-detail/login/select/
+     onboarding) → all 200 with design markers present.
+
+  STILL NET-NEW (not in this release — need backend, not just a reskin)
+   • Generator builder (generator.jsx) — a MANUAL quiz builder; the
+     current /api/quiz/generate is adaptive only (studentId + count), so
+     a manual topic/difficulty/mode path is a new feature.
+   • Real-test flow (real-test.jsx, 5 screens) — a proctored test mode
+     distinct from practice; needs a new quiz mode end-to-end.
+
+════════════════════════════════════════════════════════════════════════
+  v2.3.0  ·  2026-05-31  ·  "Design system — Concept Mastery brand"
+════════════════════════════════════════════════════════════════════════
+
+  Implemented the Claude Design handoff bundle
+  (concept-mastery-math-quiz-generator/) as the app's visual system.
+
+  FOUNDATION (applies app-wide automatically)
+   • Tailwind palette retuned to brand: `indigo-*` ramp → steel-blue
+     (#5C7BAE family), `amber-*` → logo gold (#E8A317). The ~1,100
+     existing indigo/amber utilities now render on-brand with no edits.
+   • Fonts wired via next/font: Instrument Serif (display), Plus Jakarta
+     Sans (UI), JetBrains Mono (mono) → CSS vars --font-display/-ui/-mono.
+   • Warm paper background (#FAFAF7) replaces cold slate-50 in light mode.
+   • Ported the design's tokens.css vars + cm-* component classes
+     (cm-btn, cm-card, cm-field, cm-pill, cm-bar) into globals.css.
+   • New <Logo>/<LogoMark> component — the open-book + pixel-square brand
+     mark — in src/components/Logo.tsx. Used in the root header + auth.
+   • Dark mode preserved (admin shell stays dark); design is the light theme.
+
+  SCREENS
+   • Landing page: Instrument Serif hero + brand role-CTA cards + logo.
+   • Auth (AuthCard → login/signup/claim/forgot/reset/verify): centered
+     logo, serif title, soft card on paper.
+   • Serif display headings rolled out to 25 page/form files across
+     parent, tutor, admin, student, quiz, onboarding surfaces.
+
+  VERIFICATION
+   • Source typecheck clean. 176/176 tests pass.
+   • Authed route smoke: parent, student, and all six admin pages → 200.
+
+  NOTE
+   • Per-screen pixel polish (mobile tab bars, kid XP cards, generator
+     live-preview pane) can continue from this foundation; the brand
+     palette/type now applies everywhere by default.
+
+════════════════════════════════════════════════════════════════════════
+  v2.2.0  ·  2026-05-31  ·  "Client review round 1"
+════════════════════════════════════════════════════════════════════════
+
+  A batch of UI/UX changes from the client's review notes.
+
+  PARENT DASHBOARD
+   • "Avg score this week" tile → "Last quiz score" (most recent
+     completed quiz across all children).
+   • Removed the "Hardest topic" tile.
+   • Added "Quizzes attempted" + "Submitted / not submitted" tiles.
+   • Score trend: removed the "Score % per day · last 30 days" subtitle
+     and added a range filter — Last 30 days / 90 days / 1 year + a
+     custom from/to date picker. Buckets auto-scale (daily ≤31d,
+     weekly ≤120d, monthly beyond) so a 1-year view isn't 365 points.
+
+  NAV / LAYOUT
+   • Parent: "Account" moved to the top-right (Children + Notifications
+     stay in the main nav, per clarification).
+   • "Open →" renamed to "View →" (parent dashboard + children list).
+   • Student login nav confirmed minimal (Home + Messages only — no
+     Children/Notifications, which are parent-only).
+
+  STUDENT HOME
+   • "Generate a quiz" is now the FIRST thing a student sees on login —
+     above the greeting and tutor homework. XP/streak/badges, last-quiz
+     card, and the My Progress link are kept below.
+
+  CONTROLS / LIMITS
+   • Removed the daily quiz cap entirely — parents and kids can generate
+     as many quizzes as they want. The practice-time window + locked-
+     topics parental controls remain. (maxQuizzesPerDay column kept but
+     always null'd; no destructive migration.)
+   • Difficulty labels hidden from parent + student views (kept 1–5
+     internally for the engine).
+
+  REMOVED
+   • "Data portability" / export section from the parent child page,
+     tutor student page, and child progress page.
+
+  Tests: 172 passing (removed 5 obsolete daily-cap cases, added 1
+  unlimited-generation case). Source typecheck clean. Authed route
+  smoke: all parent + admin pages 200, including the new range filters.
+
+  PENDING FROM CLIENT
+   • Logo asset (client said they'll send the format).
+
+════════════════════════════════════════════════════════════════════════
+  v2.1.0  ·  2026-05-30  ·  "Two-sided registration + secure linking"
+════════════════════════════════════════════════════════════════════════
+
+  SELF-SERVE REGISTRATION (public — parents + students only)
+   • /auth/signup is parent registration; cross-links to the student
+     flow. Tutors/admins are created ONLY by an admin.
+   • Secure parent→student linking: a parent generates a one-time
+     invite code per child (InviteStudent on the child page). Codes are
+     crypto-random, shown once, stored only as a SHA-256 hash,
+     single-use, expire in 14 days (src/lib/domain/claim-code.ts).
+   • Student redeems at /auth/claim (rate-limited): sets their own
+     email+password, gets linked to the pre-created child profile.
+   • Access gate: a claimed student starts tutorApproved=false → sees a
+     "You're almost in!" screen until a tutor/admin approves. Approve
+     control on the tutor student page AND (for super admins) the child
+     detail page reached from /admin/students → View.
+     Endpoints: /api/parent/child/[id]/claim-code, /api/auth/claim,
+     /api/students/[id]/approve. New model: StudentClaimCode.
+
+  ADMIN-SIDE "ADD" FORMS (Teachworks-style — super admin registers)
+   • /admin/students/new chooser → New Family / New Independent Student.
+   • /admin/users/new → New Employee (Teacher / Administrator).
+   • Endpoints: /api/admin/families, /api/admin/independent-students,
+     /api/admin/employees. Shared FormKit primitives.
+   • Entry links: "+ Add student" on /admin/students, "+ New employee"
+     on /admin/users.
+
+  ADMIN DASHBOARD
+   • Removed the "Avg score" and "Active 7d" KPI tiles (+ their now-
+     unused queries); tile grid tightened to 4 columns.
+
+  HARDENING (from an adversarial audit of the session's work)
+   • /api/auth/claim: wrap the create in try/catch, map unique-email
+     P2002 → clean 409; hash bcrypt outside the transaction.
+   • Bulk import: per-row try/catch so one bad row can't 500 the batch
+     or drop the audit log; returns failed/failures; hoisted an N+1
+     topic-group query to one batched lookup.
+   • independent-students: hash bcrypt outside the interactive tx.
+   • families/employees: stop silently swallowing notificationSettings
+     errors (log them).
+
+  Tests: 176 passing / 19 files. Source typecheck clean.
+
+════════════════════════════════════════════════════════════════════════
+  v2.0.0  ·  2026-05-30  ·  "Tutor tools + bulk onboarding"
+════════════════════════════════════════════════════════════════════════
+
+  Three features extending the tutor + admin surfaces.
+
+  #8 TUTOR SESSION LOG + SCHEDULING
+   • Tutors schedule sessions (date/time, duration) or log past ones
+     with a focus + notes/takeaways. Status: scheduled/completed/
+     cancelled. Lives on /tutor/student/[id].
+   • Parents get a READ-ONLY view of sessions + notes on /parent/
+     child/[id]. Model: TutorSession. API: /api/tutor/students/[id]/
+     sessions (GET/POST) + /api/tutor/sessions/[id] (PATCH/DELETE).
+     Gated by tutorOwnsStudent.
+
+  #9 CUSTOM HOMEWORK
+   • Tutors pin skills (+ title, instructions, due date) for a student.
+   • Surfaces as a "📌 Homework from your tutor" card at the TOP of
+     /child/home. Parents see it on the child page. Mark done/archive/
+     delete; skill picker scoped to the student's grade.
+   • Model: HomeworkAssignment (assignedSkillIds = JSON-encoded TEXT,
+     parsed via parseSkillIds — SQLite has no native JSON type).
+
+  #10 BULK CSV STUDENT IMPORT
+   • Admins onboard many students at /admin/students/import (linked
+     from the Student management header).
+   • Upload or paste CSV: name, grade, parentEmail (required) +
+     difficulty, loginEmail, loginPassword (optional).
+   • PREVIEW validates every row (parent exists in scope, login emails
+     unique, grade 1–8…) with a per-row ✅/❌ table BEFORE commit.
+     Commit skips invalid rows. Org-admins scoped; superadmin global.
+     RFC-4180-ish parser in src/lib/csv-import.ts.
+
+  TESTS: 165 total (was 134) — +31 across csv-import, tutor-sessions,
+  homework validators. Source typecheck clean.
+
+  FIX: restored src/lib/audit.ts (corrupted mid-session) and set
+  HomeworkAssignment.assignedSkillIds to String (SQLite has no Json).
+
+════════════════════════════════════════════════════════════════════════
+  v1.8.0  ·  2026-05-26  ·  "Branded HTML emails"
+════════════════════════════════════════════════════════════════════════
+
+  ADDED  ───────────────────────────────────────────────────────────────
+    • src/lib/emailTemplate.ts: single renderEmail({ heading, body,
+      items, cta, footnote, preheader }) helper that emits both an
+      HTML version (table-based, inline-styled, indigo header bar,
+      branded card on slate background) AND a derived plain-text
+      version, so every email is multipart with both parts in sync.
+    • Hidden preheader text in every email — Gmail / Outlook show
+      this in the inbox list after the subject line.
+    • scripts/email-preview.ts → renders 7 representative emails to
+      ~/Desktop/cm-email-previews/*.html. Open in any browser to see
+      exactly what recipients receive.
+
+  CHANGED  ─────────────────────────────────────────────────────────────
+    • Every notification helper in src/lib/notifications.ts now builds
+      a structured EmailPayload and routes through renderEmail():
+      welcome, tutor assignment (both sides), quiz completed (student
+      / tutor / parent / low-score), suspend / unsuspend / password
+      / email-change security notices, weekly parent digest, weekly
+      tutor digest, inactivity alert.
+    • Auth-flow emails refactored to the same template: signup
+      verification, resend verification, forgot password, change-email
+      verification.
+    • CTAs render as styled buttons in HTML clients; the same URL is
+      preserved verbatim in the text fallback so blocked-HTML clients
+      still get a working link.
+
+  NOTES  ───────────────────────────────────────────────────────────────
+    • Inline CSS only — Outlook strips <style> blocks. All layout via
+      nested <table role="presentation">. Verified to render across
+      Apple Mail, Gmail web, Gmail mobile, Outlook desktop.
+    • No external assets (no remote fonts, no images). Brand identity
+      is type + color (indigo #6366f1) only.
+
+════════════════════════════════════════════════════════════════════════
   v1.7.0  ·  2026-05-24  ·  "Lifecycle emails everywhere"
 ════════════════════════════════════════════════════════════════════════
 

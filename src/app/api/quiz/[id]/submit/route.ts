@@ -5,8 +5,15 @@ import { gradeAnswer } from "@/lib/domain/grading";
 import { getParentForApi } from "@/lib/auth/server";
 import { awardXpAndBadges } from "@/lib/gamification";
 import { notifyQuizCompleted } from "@/lib/notifications";
+import { isTestMode, serializeFlaggedIds } from "@/lib/domain/test-mode";
 
-type Body = { answers?: Record<string, string> };
+type Body = {
+  answers?: Record<string, string>;
+  // Test mode only: the questions the student flagged for review, and the
+  // client-reported elapsed time (server still bounds it by startedAt).
+  flaggedQuestionIds?: number[];
+  timeUsedSec?: number;
+};
 
 type SkillBreakdown = {
   skillId: number;
@@ -156,6 +163,44 @@ export async function POST(
     };
   });
 
+  // Test mode: record elapsed time (server-authoritative, bounded by the start
+  // timestamp and the time limit) and the flagged-question ids.
+  const now = new Date();
+  const test = isTestMode(quiz.mode);
+  // Authoritative clock origin: the one-time testStartedAt (set when the test
+  // was first started) so a reload can't extend the timer; falls back to
+  // startedAt for legacy/never-stamped rows.
+  const clockOrigin = quiz.testStartedAt ?? quiz.startedAt;
+  const computedSec = Math.max(0, Math.round((now.getTime() - clockOrigin.getTime()) / 1000));
+  const reportedSec =
+    typeof body.timeUsedSec === "number" && Number.isFinite(body.timeUsedSec)
+      ? Math.max(0, Math.round(body.timeUsedSec))
+      : computedSec;
+  let timeUsedSec = Math.min(reportedSec, computedSec);
+  if (quiz.timeLimitSec) timeUsedSec = Math.min(timeUsedSec, quiz.timeLimitSec);
+  const flaggedIds = Array.isArray(body.flaggedQuestionIds) ? body.flaggedQuestionIds : [];
+
+  const quizUpdateData = {
+    status: "completed",
+    score: scorePercent,
+    completedAt: now,
+    ...(test ? { timeUsedSec, flaggedQuestionIds: serializeFlaggedIds(flaggedIds) } : {}),
+  };
+
+  // Atomically claim the completion: only one request can flip status away
+  // from "completed". This compare-and-set closes the TOCTOU window where two
+  // concurrent submits (e.g. a network retry, or a test's auto-submit racing a
+  // manual submit) both pass the earlier read-side guard and double-award XP.
+  const claim = await prisma.quiz.updateMany({
+    where: { id: quiz.id, status: { not: "completed" } },
+    data: quizUpdateData,
+  });
+  if (claim.count === 0) {
+    return NextResponse.json({ error: "quiz already completed" }, { status: 409 });
+  }
+
+  // We exclusively own this completion now — persist the rest. (The quiz row
+  // was already updated by the claim above.)
   await prisma.$transaction([
     prisma.attempt.createMany({
       data: attempts.map((a) => ({
@@ -164,10 +209,6 @@ export async function POST(
         selectedAnswer: a.selectedAnswer,
         isCorrect: a.isCorrect,
       })),
-    }),
-    prisma.quiz.update({
-      where: { id: quiz.id },
-      data: { status: "completed", score: scorePercent, completedAt: new Date() },
     }),
     prisma.student.update({
       where: { id: quiz.studentId },
@@ -205,11 +246,14 @@ export async function POST(
   ]);
 
   // Per-question results let the runner color each row green/red without
-  // having shipped correct answers to the client up front.
+  // having shipped correct answers to the client up front. For a TEST whose
+  // review the parent hasn't unlocked yet, withhold the correct answers
+  // entirely so the "answers are locked" promise holds.
+  const hideAnswers = test && !quiz.reviewUnlocked;
   const correctById = new Map(quiz.questions.map((q) => [q.id, q.correctAnswer]));
   const results = attempts.map((a) => ({
     questionId: a.questionId,
-    correctAnswer: correctById.get(a.questionId) ?? "",
+    correctAnswer: hideAnswers ? "" : correctById.get(a.questionId) ?? "",
     isCorrect: a.isCorrect,
   }));
 
@@ -226,8 +270,10 @@ export async function POST(
       studentId: quiz.studentId,
       scorePct: scorePercent,
       startedAt: quiz.startedAt,
-      completedAt: new Date(),
+      completedAt: now,
       topicGroupLetters,
+      isTest: test,
+      isDailyChallenge: quiz.isDailyChallenge,
     });
   } catch (err) {
     console.error("[gamification] award failed", err);

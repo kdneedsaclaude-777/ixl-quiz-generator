@@ -1,0 +1,10 @@
+<en-US>
+Welcome to QuizSpark! 🎉 Our first release.
+
+Adaptive math practice for Grades 1–8 that adjusts to your child:
+• Quizzes that automatically get easier or harder
+• XP, levels, badges and daily streaks to keep kids motivated
+• A parent dashboard to track progress and topics
+
+Thanks for trying it — we'd love your feedback!
+</en-US>

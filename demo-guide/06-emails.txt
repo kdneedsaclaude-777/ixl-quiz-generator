@@ -8,6 +8,34 @@
 
 
 ┌──────────────────────────────────────────────────────────────────────┐
+│  HOW THEY LOOK                                                       │
+└──────────────────────────────────────────────────────────────────────┘
+
+  Every email goes out as multipart MIME with TWO parts in sync:
+
+    • text/html — indigo header bar with "Concept Mastery", white
+      body card, dark heading, paragraph copy, a styled CTA button,
+      grey footnote, soft footer bar. Inline CSS, no remote assets.
+      Renders identically in Apple Mail, Gmail (web + mobile),
+      and Outlook desktop.
+
+    • text/plain — same words, no markup. Used by clients that block
+      HTML and required for deliverability reputation.
+
+  Hidden preheader text in every HTML mail shows in the inbox preview
+  next to the subject in Gmail / Outlook.
+
+  Preview the gallery anytime:
+
+      npx tsx scripts/email-preview.ts
+      open ~/Desktop/cm-email-previews/
+
+  That renders 7 sample emails (welcome / quiz / tutor-assign /
+  digest / low-score / password / admin-welcome) to .html files you
+  can open in any browser.
+
+
+┌──────────────────────────────────────────────────────────────────────┐
 │  GLOBAL OFF SWITCH                                                   │
 └──────────────────────────────────────────────────────────────────────┘
 

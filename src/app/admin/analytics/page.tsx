@@ -170,24 +170,25 @@ export default async function AdminAnalyticsPage({
   }));
 
   return (
-    <main className="space-y-6">
+    <main className="space-y-6 text-[color:var(--shell-text)]">
       <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Analytics</h1>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Platform-wide trends and drill-downs.</p>
+          <div className="text-xs font-semibold tracking-wide text-[color:var(--shell-muted)]">INSIGHTS</div>
+          <h1 className="font-display mt-1 text-4xl leading-none text-white">Analytics</h1>
+          <p className="mt-1.5 text-sm text-[color:var(--shell-muted)]">Platform-wide trends and drill-downs.</p>
         </div>
         <ExportButton />
       </header>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+      <section className="rounded-2xl border p-4" style={{ background: "var(--shell-card)", borderColor: "var(--shell-border)" }}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-[color:var(--shell-text)]">
             Quizzes by grade — last 7 days vs last 30 days
           </h2>
           <AnalyticsFilters />
         </div>
         {quizzesByGradeRows.length === 0 ? (
-          <p className="mt-4 rounded border border-dashed border-slate-300 px-3 py-6 text-center text-sm text-slate-500 dark:border-slate-600 dark:text-slate-400">
+          <p className="mt-4 rounded-xl border border-dashed px-3 py-6 text-center text-sm text-[color:var(--shell-muted)]" style={{ borderColor: "var(--shell-border)" }}>
             No matching quizzes in the last 30 days.
           </p>
         ) : (
@@ -198,7 +199,7 @@ export default async function AdminAnalyticsPage({
       </section>
 
       <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">Grade × topic heatmap</h2>
+        <h2 className="text-sm font-bold uppercase tracking-wide text-[color:var(--shell-text)]">Grade × topic heatmap</h2>
         <div className="mt-2"><Heatmap letters={letters} cells={cells} /></div>
       </section>
 

@@ -34,10 +34,11 @@ export default async function AdminContentPage({
   }));
 
   return (
-    <main className="space-y-6">
+    <main className="space-y-6 text-[color:var(--shell-text)]">
       <header>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Content management</h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+        <div className="text-xs font-semibold tracking-wide text-[color:var(--shell-muted)]">CURRICULUM</div>
+        <h1 className="font-display mt-1 text-4xl leading-none text-white">Content management</h1>
+        <p className="mt-1.5 text-sm text-[color:var(--shell-muted)]">
           Toggle topic groups and skills on or off. Inactive topics are hidden from onboarding and quiz generation.
         </p>
       </header>

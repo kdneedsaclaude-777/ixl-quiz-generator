@@ -44,15 +44,32 @@ model User {
   lastLoginAt          DateTime?
   createdAt            DateTime              @default(now())
 
+  // ── Subscription / freemium (Quizly) ──────────────────────────────────
+  // The consumer plan lives on the parent account. "free" = 1 lifetime quiz +
+  // practice only; "paid" = $5/mo unlocks everything. Stripe is the source of
+  // truth; the webhook flips `plan` + status. Other roles default to "free"
+  // but plan gating is only enforced for parents.
+  plan                 String                @default("free") // "free" | "paid"
+  stripeCustomerId     String?               @unique
+  stripeSubscriptionId String?
+  subscriptionStatus   String?               // Stripe sub status (active, canceled, past_due…)
+  currentPeriodEnd     DateTime?             // paid access valid through this
+
   students             Student[]             @relation("ParentStudents")
   studentProfile       Student?              @relation("StudentAccount")
   tutorAssignments     TutorAssignment[]     @relation("TutorLink")
   notificationSettings NotificationSettings?
+  payments             Payment[]
+  notifications        Notification[]
   accounts             Account[]
   sessions             Session[]
   passwordResetTokens  PasswordResetToken[]
   phoneVerification    PhoneVerification?
-  auditEntries         AuditLog[]            @relation("AuditActor")
+  auditEntries              AuditLog[]                @relation("AuditActor")
+  conversationParticipants  ConversationParticipant[]
+  sentMessages              Message[]                 @relation("MessageSender")
+  tutorSessions             TutorSession[]            @relation("TutorSessions")
+  tutorHomework             HomeworkAssignment[]      @relation("TutorHomework")
 
   @@index([orgId])
   @@index([role])
@@ -158,6 +175,10 @@ model Student {
   earnedBadges      StudentBadge[]
   xpLog             XPLog[]
   tutorAssignments  TutorAssignment[]
+  conversations     Conversation[]
+  tutorSessions     TutorSession[]
+  homework          HomeworkAssignment[]
+  claimCode         StudentClaimCode?
 
   @@index([orgId])
   @@index([parentId])
@@ -206,10 +227,37 @@ model Quiz {
   status      String     @default("active")
   score       Float?
   difficulty  Int
+  // "practice" (default, step-by-step feedback) | "test" (proctored: answers
+  // and explanations are withheld until the quiz is submitted / unlocked).
+  mode        String     @default("practice")
+  // "adaptive" (one-tap, engine-chosen) | "manual" (parent/tutor builder).
+  generatedBy String     @default("adaptive")
+  // JSON snapshot of the manual builder params {topicGroupIds,difficulty,
+  // questionCount,mode} for reproducibility/audit. Null for adaptive quizzes.
+  paramsJson  String?
+  // Test-mode timing. timeLimitSec null = untimed. timeUsedSec filled on submit.
+  timeLimitSec Int?
+  timeUsedSec  Int?
+  // Stamped ONCE when a test is first started, so reloading the intake can't
+  // reset the countdown. The authoritative clock origin (falls back to
+  // startedAt for legacy rows).
+  testStartedAt DateTime?
+  // Parent/tutor gate: test answers + explanations stay hidden on the result
+  // screen until this is flipped true.
+  reviewUnlocked Boolean  @default(false)
+  // JSON int[] of Question ids the student flagged for review during a test.
+  flaggedQuestionIds String @default("[]")
+  // True only for the home "Daily Challenge" tile's quiz — powers the
+  // daily_done badge + daily-challenge XP bonus. Server-set, never trusted
+  // from the client.
+  isDailyChallenge Boolean @default(false)
   startedAt   DateTime   @default(now())
   createdAt   DateTime   @default(now())
   completedAt DateTime?
   questions   Question[]
+  xpLogs      XPLog[]
+
+  @@index([studentId, mode])
 }
 
 model Question {
@@ -312,6 +360,7 @@ model NotificationSettings {
   weeklyDigest        Boolean @default(true)
   alertBelowScorePct  Int?    @default(60)
   alertNoPracticeDays Int?    @default(7)
+  streakReminder      Boolean @default(true)
 }
 
 // Dedupe ledger so a quiz-completion email, weekly digest, or inactivity
@@ -326,6 +375,56 @@ model NotificationLog {
 
   @@unique([userId, type, refKey])
   @@index([userId])
+}
+
+// A successful Quizly Plus payment — one row per paid invoice. Recorded by the
+// Stripe webhook (invoice.payment_succeeded). Powers the admin billing/receipts
+// view and the per-parent payment history.
+model Payment {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeInvoiceId String?   @unique
+  amount          Int       // smallest currency unit (e.g. cents)
+  currency        String    @default("usd")
+  status          String    @default("paid")
+  description     String    @default("Quizly Plus")
+  receiptUrl      String?   // Stripe hosted invoice / receipt URL
+  periodEnd       DateTime?
+  paidAt          DateTime  @default(now())
+  createdAt       DateTime  @default(now())
+
+  @@index([userId])
+  @@index([paidAt])
+}
+
+// Freemium funnel analytics — one row each time a free user hits a paywall
+// (which gate) and each time a checkout/upgrade happens. Powers the admin
+// conversion panel. Plain userId (no relation) to keep it append-only + cheap.
+model PaywallEvent {
+  id        String   @id @default(cuid())
+  userId    String?
+  reason    String   // 'free_daily_limit' | 'paid_feature_test' | 'paid_feature_children' | 'checkout_started' | 'upgraded'
+  createdAt DateTime @default(now())
+
+  @@index([reason, createdAt])
+  @@index([userId])
+}
+
+// Lightweight in-app notification feed (currently billing events: a parent is
+// notified the moment their payment lands). Shown in-app + cleared by reading.
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String    // 'plus_welcome' | 'payment_received' | …
+  title     String
+  body      String
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt])
 }
 
 // =====================================================================
@@ -356,11 +455,18 @@ model XPLog {
   id        String   @id @default(cuid())
   studentId Int
   student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  // Which quiz produced this XP (null for non-quiz grants). Lets the results
+  // screen reconstruct the exact itemized breakdown for one quiz.
+  quizId    Int?
+  quiz      Quiz?    @relation(fields: [quizId], references: [id], onDelete: SetNull)
   delta     Int
   reason    String
   createdAt DateTime @default(now())
 
-  @@index([studentId])
+  // Composite index powers the weekly-XP leaderboard aggregate
+  // (studentId IN (...) AND createdAt >= startOfWeek).
+  @@index([studentId, createdAt])
+  @@index([quizId])
 }
 
 // =====================================================================
@@ -387,4 +493,133 @@ model AuditLog {
   @@index([actorId])
   @@index([targetType, targetId])
   @@index([createdAt])
+}
+
+// =====================================================================
+// Messaging
+// =====================================================================
+
+model Conversation {
+  id            String                    @id @default(cuid())
+  topicKey      String                    @unique
+  studentId     Int?
+  student       Student?                  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  createdAt     DateTime                  @default(now())
+  lastMessageAt DateTime                  @default(now())
+  participants  ConversationParticipant[]
+  messages      Message[]
+
+  @@index([lastMessageAt])
+  @@index([studentId])
+}
+
+model ConversationParticipant {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastReadAt     DateTime?
+  joinedAt       DateTime     @default(now())
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  body           String
+  createdAt      DateTime     @default(now())
+  deletedAt      DateTime?
+
+  @@index([conversationId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Tutor session log + scheduling (v2.0 #8).
+//
+// A TutorSession records a tutoring session — either scheduled (future
+// scheduledAt, status "scheduled") or logged after the fact (status
+// "completed" with notes). Parents see a read-only view on the child page;
+// tutors create/edit. focus + takeaways are free text the tutor fills in.
+// ---------------------------------------------------------------------------
+
+model TutorSession {
+  id          String    @id @default(cuid())
+  tutorId     String
+  tutor       User      @relation("TutorSessions", fields: [tutorId], references: [id], onDelete: Cascade)
+  studentId   Int
+  student     Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  // "scheduled" | "completed" | "cancelled"
+  status      String    @default("scheduled")
+  // When the session happens (scheduled) or happened (completed).
+  scheduledAt DateTime
+  durationMin Int       @default(30)
+  // Tutor-authored. focus = what the session targets; notes/takeaways filled
+  // after. Visible to the parent of the student.
+  focus       String?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([studentId])
+  @@index([tutorId])
+  @@index([scheduledAt])
+}
+
+// ---------------------------------------------------------------------------
+// Custom homework (v2.0 #9).
+//
+// A tutor pins specific skills for a student to practise. Surfaces as a
+// highlighted card on the child's home page. assignedSkillIds is a JSON array
+// of Skill ids (kept denormalized + simple; a join table would be overkill
+// for a short pinned list). status tracks lifecycle; dueAt is optional.
+// ---------------------------------------------------------------------------
+
+model HomeworkAssignment {
+  id              String    @id @default(cuid())
+  tutorId         String
+  tutor           User      @relation("TutorHomework", fields: [tutorId], references: [id], onDelete: Cascade)
+  studentId       Int
+  student         Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  title           String
+  instructions    String?
+  // JSON-encoded array of Skill ids. SQLite has no native JSON type, so this
+  // is TEXT and parsed in code (same convention as ParentalSettings).
+  assignedSkillIds String   @default("[]")
+  dueAt           DateTime?
+  // "active" | "completed" | "archived"
+  status          String    @default("active")
+  completedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([studentId, status])
+  @@index([tutorId])
+}
+
+// ---------------------------------------------------------------------------
+// Secure parent→student account linking (v2.1 self-serve registration).
+//
+// A parent generates a one-time, time-limited claim code for one of their
+// children. The student redeems it during self-signup to attach their new
+// login to that pre-existing child profile. We store only a SHA-256 hash of
+// the code (plaintext shown to the parent once); single-use via claimedAt;
+// expires via expiresAt. One active code per child (regenerating overwrites).
+// ---------------------------------------------------------------------------
+
+model StudentClaimCode {
+  id         String    @id @default(cuid())
+  studentId  Int       @unique
+  student    Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  codeHash   String    // sha256(plaintext); plaintext never stored
+  expiresAt  DateTime
+  claimedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([codeHash])
 }

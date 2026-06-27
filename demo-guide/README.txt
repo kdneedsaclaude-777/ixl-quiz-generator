@@ -1,6 +1,6 @@
 ╔══════════════════════════════════════════════════════════════════════╗
 ║                                                                      ║
-║              IXL QUIZ APP  —  DEMO GUIDE                             ║
+║              CONCEPT MASTERY  —  DEMO GUIDE                             ║
 ║              Per-role walkthroughs + change history                  ║
 ║                                                                      ║
 ╚══════════════════════════════════════════════════════════════════════╝
@@ -42,7 +42,7 @@ ever switching context.
 
   ROLE             EMAIL                      PASSWORD          GRADE
   ---------------- -------------------------- ----------------- -----
-  Super Admin      admin@ixl.local            Admin1234!        —
+  Super Admin      admin@cm.local            Admin1234!        —
   Org Admin        orgadmin@demo.local        OrgAdmin1234!     —
   Parent           parent@demo.local          Parent1234!       —
   Tutor            tutor@demo.local           Tutor1234!        —

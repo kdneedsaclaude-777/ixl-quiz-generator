@@ -2,7 +2,7 @@ import Link from "next/link";
 import AuthCard from "../AuthCard";
 import VerifyEmailRunner from "./VerifyEmailRunner";
 
-export const metadata = { title: "Verify email — IXL Quiz" };
+export const metadata = { title: "Verify email — QuizSpark" };
 
 export default async function VerifyEmailPage({
   searchParams,
@@ -15,7 +15,7 @@ export default async function VerifyEmailPage({
       title="Email verification"
       footer={
         <span>
-          <Link href="/auth/login" className="font-medium text-indigo-600 hover:underline dark:text-indigo-400">Go to login</Link>
+          <Link href="/auth/login" className="font-medium text-cm-blue hover:underline">Go to login</Link>
         </span>
       }
     >

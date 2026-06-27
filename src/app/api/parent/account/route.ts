@@ -4,6 +4,7 @@ import { getParentForApi } from "@/lib/auth/server";
 import { hashPassword, verifyPassword, validatePasswordStrength } from "@/lib/password";
 import { generateToken, verificationExpiry } from "@/lib/tokens";
 import { sendEmail, buildAppUrl } from "@/lib/email";
+import { renderEmail } from "@/lib/emailTemplate";
 import { notifyPasswordChanged, notifyEmailChanged } from "@/lib/notifications";
 
 type Body = {
@@ -70,11 +71,18 @@ export async function PATCH(req: Request): Promise<Response> {
         }),
       ]);
       const link = buildAppUrl(`/auth/verify-email?token=${token}`);
+      const { html, text } = renderEmail({
+        preheader: "Confirm your new login email on QuizSpark.",
+        heading: "Verify your new email",
+        body: `You asked to change your QuizSpark login email to ${newEmail}. Tap below to confirm this address.`,
+        cta: { label: "Verify new email", url: link },
+        footnote: "If you didn't ask for this change, ignore this email — the address won't switch until you verify.",
+      });
       await sendEmail({
         to: newEmail,
         subject: "Verify your new email",
-        text: `Click to verify your new email: ${link}`,
-        html: `<p>Click to verify your new email:</p><p><a href="${link}">${link}</a></p>`,
+        text,
+        html,
       });
       // Heads-up to the OLD address — only the original owner can read it,
       // so a thief who changed the email can't suppress this alert.

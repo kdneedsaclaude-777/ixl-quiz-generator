@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import RoleNav from "@/components/layouts/RoleNav";
+import StudentTabBar from "@/components/child/StudentTabBar";
 import { exitChildMode } from "./actions";
 import { isMaintenanceModeOn } from "@/lib/maintenance";
 import { loadImpersonatedUser } from "@/lib/impersonation";
@@ -19,27 +19,20 @@ export default async function ChildLayout({ children }: { children: React.ReactN
   const session = await getServerSession(authOptions);
   const isStudent = session?.user?.role === "student";
 
+  // Students get the clean design: content + the floating bottom tab bar, no
+  // top chrome (Log out lives on the "Me" tab). A parent who picked a child
+  // keeps a slim top bar to switch profile / return to the parent app — that
+  // is a context exit, not in-app back navigation.
   return (
     <section>
-      <RoleNav
-        tone="warm"
-        items={
-          isStudent
-            ? [{ href: "/child/home", label: "🏠 Home" }]
-            : [
-                { href: "/child/home", label: "🏠 Home" },
-                { href: "/child/select", label: "🧑‍🎓 Switch profile" },
-              ]
-        }
-        trailing={
-          isStudent ? (
-            <Link
-              href="/auth/logout"
-              className="rounded-md px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100"
-            >
-              Log out
-            </Link>
-          ) : (
+      {!isStudent && (
+        <RoleNav
+          tone="warm"
+          items={[
+            { href: "/child/home", label: "🏠 Home" },
+            { href: "/child/select", label: "🧑‍🎓 Switch profile" },
+          ]}
+          trailing={
             <form action={exitChildMode}>
               <button
                 type="submit"
@@ -48,10 +41,11 @@ export default async function ChildLayout({ children }: { children: React.ReactN
                 ← Back to parent
               </button>
             </form>
-          )
-        }
-      />
-      {children}
+          }
+        />
+      )}
+      <div className="pb-28">{children}</div>
+      <StudentTabBar />
     </section>
   );
 }

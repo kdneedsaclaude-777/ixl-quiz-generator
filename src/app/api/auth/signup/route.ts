@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { hashPassword, validatePasswordStrength } from "@/lib/password";
 import { generateToken, verificationExpiry } from "@/lib/tokens";
 import { sendEmail, buildAppUrl, isRealEmailConfigured } from "@/lib/email";
+import { renderEmail } from "@/lib/emailTemplate";
 import { enforceRateLimit } from "@/lib/rate-limit";
 
 type Body = { name?: string; email?: string; password?: string };
@@ -36,8 +37,10 @@ export async function POST(req: Request): Promise<Response> {
 
   // Public-test/demo mode: provision accounts fully verified so anyone can
   // sign up and use the app immediately with no email round-trip. Off by
-  // default — production keeps the real verification gate.
-  const publicTestMode = process.env.PUBLIC_TEST_MODE === "true";
+  // default, and hard-disabled in production so a stray env var can never
+  // skip email verification on the live app.
+  const publicTestMode =
+    process.env.PUBLIC_TEST_MODE === "true" && process.env.NODE_ENV !== "production";
 
   const user = await prisma.user.create({
     data: {
@@ -61,11 +64,18 @@ export async function POST(req: Request): Promise<Response> {
     data: { identifier: user.email!, token, expires: verificationExpiry() },
   });
   const link = buildAppUrl(`/auth/verify-email?token=${token}`);
+  const { html, text } = renderEmail({
+    preheader: "One click to confirm your email and finish signing up.",
+    heading: `Verify your email, ${user.name}`,
+    body: "Tap the button below to confirm this email and activate your QuizSpark account.",
+    cta: { label: "Verify email", url: link },
+    footnote: "The link expires in 24 hours. If you didn't sign up, you can safely ignore this email.",
+  });
   const { previewUrl } = await sendEmail({
     to: user.email!,
-    subject: "Verify your IXL Quiz email",
-    text: `Hi ${user.name},\n\nClick the link below to verify your email:\n${link}\n\nLink expires in 24 hours.`,
-    html: `<p>Hi ${user.name},</p><p>Click the link below to verify your email:</p><p><a href="${link}">${link}</a></p><p>Link expires in 24 hours.</p>`,
+    subject: "Verify your QuizSpark email",
+    text,
+    html,
   });
 
   // In dev/demo there is no real inbox (Ethereal), so digging the link out of

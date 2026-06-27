@@ -54,7 +54,7 @@ export function buildGenerateQuizPrompt(inputs: GenerateQuizInputs): {
     `- Question count: ${inputs.question_count}`,
     `- ${weakLine}`,
     ``,
-    `Follow the IXL Quiz Generator skill spec exactly:`,
+    `Follow the QuizSpark Quiz Generator skill spec exactly:`,
     `- Question type by difficulty (Step 3 of the spec)`,
     `- Minimum 2 questions per skill code`,
     `- For every MCQ, include why_wrong covering all wrong options`,

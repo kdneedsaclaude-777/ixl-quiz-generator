@@ -12,6 +12,15 @@ function isPrefixed(pathname: string, prefixes: string[]): boolean {
   return prefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
+// Pass the current pathname to server components via a request header, so the
+// root layout can drop its global chrome on full-bleed routes. Used for every
+// non-redirect response below.
+function passthrough(req: NextRequest): NextResponse {
+  const headers = new Headers(req.headers);
+  headers.set("x-pathname", req.nextUrl.pathname);
+  return NextResponse.next({ request: { headers } });
+}
+
 export async function middleware(req: NextRequest): Promise<NextResponse> {
   const { pathname } = req.nextUrl;
 
@@ -20,14 +29,14 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     pathname.startsWith("/api/auth") ||
     isPrefixed(pathname, PUBLIC_AUTH)
   ) {
-    return NextResponse.next();
+    return passthrough(req);
   }
 
   const needsParent = isPrefixed(pathname, PROTECTED_PARENT);
   const needsAdmin = isPrefixed(pathname, PROTECTED_ADMIN);
   const needsTutor = isPrefixed(pathname, PROTECTED_TUTOR);
   const needsChild = isPrefixed(pathname, PROTECTED_CHILD);
-  if (!needsParent && !needsAdmin && !needsTutor && !needsChild) return NextResponse.next();
+  if (!needsParent && !needsAdmin && !needsTutor && !needsChild) return passthrough(req);
 
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
   if (!token) {
@@ -77,7 +86,7 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     }
   }
 
-  return NextResponse.next();
+  return passthrough(req);
 }
 
 function roleHome(role: string): string {

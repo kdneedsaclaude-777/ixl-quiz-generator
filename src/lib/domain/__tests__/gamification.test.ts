@@ -3,7 +3,11 @@ import {
   calculateXp,
   xpToLevel,
   calculateStreak,
+  streakAtRisk,
   detectNewBadges,
+  levelTitle,
+  LEVEL_TIER_PILL,
+  calculateXpBreakdown,
   type DetectionInput,
   type QuizSummary,
 } from "@/lib/domain/gamification";
@@ -24,6 +28,8 @@ function buildInput(over: Partial<DetectionInput> & { history?: QuizSummary[] })
   return {
     today,
     alreadyEarned: over.alreadyEarned ?? new Set(),
+    level: over.level ?? 1,
+    totalQuizzes: over.totalQuizzes ?? history.length,
     thisQuiz: over.thisQuiz ?? {
       scorePct: history.at(-1)?.scorePct ?? 80,
       durationSeconds: 300,
@@ -34,13 +40,13 @@ function buildInput(over: Partial<DetectionInput> & { history?: QuizSummary[] })
 }
 
 describe("calculateXp", () => {
-  it("scales by 10× score percent", () => {
-    expect(calculateXp(100)).toBe(1000);
-    expect(calculateXp(75)).toBe(750);
+  it("equals the score percent (100% = 100 XP = one level)", () => {
+    expect(calculateXp(100)).toBe(100);
+    expect(calculateXp(75)).toBe(75);
     expect(calculateXp(0)).toBe(0);
   });
   it("clamps out-of-range inputs", () => {
-    expect(calculateXp(150)).toBe(1000);
+    expect(calculateXp(150)).toBe(100);
     expect(calculateXp(-10)).toBe(0);
   });
 });
@@ -84,6 +90,33 @@ describe("calculateStreak", () => {
     const b = new Date(today); b.setHours(15);
     const c = new Date(today); c.setHours(20);
     expect(calculateStreak([a, b, c], today)).toBe(1);
+  });
+});
+
+describe("streakAtRisk", () => {
+  const today = new Date(2026, 4, 11, 12, 0, 0);
+
+  it("returns 0 when there is no history", () => {
+    expect(streakAtRisk([], today)).toBe(0);
+  });
+
+  it("returns 0 when already practised today (streak is safe)", () => {
+    expect(streakAtRisk([today, daysAgo(today, 1)], today)).toBe(0);
+  });
+
+  it("flags a live streak not yet extended today", () => {
+    // practised yesterday + the day before, nothing today → 2-day streak at risk
+    expect(streakAtRisk([daysAgo(today, 1), daysAgo(today, 2)], today)).toBe(2);
+  });
+
+  it("returns 0 when the streak already lapsed (no quiz yesterday)", () => {
+    expect(streakAtRisk([daysAgo(today, 2), daysAgo(today, 3)], today)).toBe(0);
+  });
+
+  it("respects the minDays floor", () => {
+    // a 1-day streak is below a minDays=2 floor
+    expect(streakAtRisk([daysAgo(today, 1)], today, 2)).toBe(0);
+    expect(streakAtRisk([daysAgo(today, 1)], today, 1)).toBe(1);
   });
 });
 
@@ -202,5 +235,118 @@ describe("detectNewBadges", () => {
       alreadyEarned: new Set(["first_quiz", "perfect_score", "speed_demon"]),
     }));
     expect(r.map((a) => a.code)).toEqual([]);
+  });
+
+  // ── Expansion badges ──
+  it("streak3 at exactly a 3-day streak, not at 2", () => {
+    const h3 = [quiz(80, ["B"], daysAgo(today, 2)), quiz(80, ["B"], daysAgo(today, 1)), quiz(80, ["B"], today)];
+    expect(detectNewBadges(buildInput({ history: h3 })).map((a) => a.code)).toContain("streak3");
+    const h2 = [quiz(80, ["B"], daysAgo(today, 1)), quiz(80, ["B"], today)];
+    expect(detectNewBadges(buildInput({ history: h2 })).map((a) => a.code)).not.toContain("streak3");
+  });
+
+  it("level5 fires at level >=5, level10 only at >=10", () => {
+    const r5 = detectNewBadges(buildInput({ history: [quiz(80, ["B"], today)], level: 5 }));
+    expect(r5.map((a) => a.code)).toContain("level5");
+    expect(r5.map((a) => a.code)).not.toContain("level10");
+    const r10 = detectNewBadges(buildInput({ history: [quiz(80, ["B"], today)], level: 10 }));
+    expect(r10.map((a) => a.code)).toContain("level10");
+  });
+
+  it("test_ace requires a 100% TEST, not a 100% practice quiz", () => {
+    const practice = detectNewBadges(buildInput({
+      history: [quiz(100, ["B"], today)],
+      thisQuiz: { scorePct: 100, durationSeconds: 300, topicGroupLetters: ["B"], isTest: false },
+    }));
+    expect(practice.map((a) => a.code)).not.toContain("test_ace");
+    const test = detectNewBadges(buildInput({
+      history: [quiz(100, ["B"], today)],
+      thisQuiz: { scorePct: 100, durationSeconds: 300, topicGroupLetters: ["B"], isTest: true },
+    }));
+    expect(test.map((a) => a.code)).toContain("test_ace");
+  });
+
+  it("daily_done requires the daily-challenge flag", () => {
+    const r = detectNewBadges(buildInput({
+      history: [quiz(60, ["B"], today)],
+      thisQuiz: { scorePct: 60, durationSeconds: 300, topicGroupLetters: ["B"], isDailyChallenge: true },
+    }));
+    expect(r.map((a) => a.code)).toContain("daily_done");
+  });
+
+  it("centurion at 100 total quizzes, not 99", () => {
+    expect(detectNewBadges(buildInput({ history: [quiz(80, ["B"], today)], totalQuizzes: 99 })).map((a) => a.code)).not.toContain("centurion");
+    expect(detectNewBadges(buildInput({ history: [quiz(80, ["B"], today)], totalQuizzes: 100 })).map((a) => a.code)).toContain("centurion");
+  });
+});
+
+describe("levelTitle", () => {
+  it("clamps low levels to the first rank", () => {
+    expect(levelTitle(0).title).toBe("Math Rookie");
+    expect(levelTitle(-3).title).toBe("Math Rookie");
+    expect(levelTitle(1).title).toBe("Math Rookie");
+  });
+  it("uses inclusive band boundaries", () => {
+    expect(levelTitle(2).title).toBe("Number Newbie");
+    expect(levelTitle(10).title).toBe("Math Whiz");
+    expect(levelTitle(9).title).toBe("Sharp Thinker"); // just below the 10-band
+  });
+  it("caps very high levels at the top rank", () => {
+    expect(levelTitle(500).title).toBe("Math Mythic");
+  });
+  it("every tier maps to one of the four existing cm-pill variants", () => {
+    const allowed = new Set(["mint", "coral", "amber", "indigo"]);
+    for (const lvl of [1, 3, 7, 14, 24, 40, 75, 100]) {
+      expect(allowed.has(LEVEL_TIER_PILL[levelTitle(lvl).tier])).toBe(true);
+    }
+  });
+});
+
+describe("calculateXpBreakdown", () => {
+  const baseInput = {
+    scorePct: 70,
+    streak: 1,
+    isFirstToday: false,
+    isDailyChallenge: false,
+    isTest: false,
+    recentAvgPct: null as number | null,
+  };
+
+  it("base only when no bonuses apply", () => {
+    const r = calculateXpBreakdown(baseInput);
+    expect(r.base).toBe(calculateXp(70));
+    expect(r.bonuses).toEqual([]);
+    expect(r.total).toBe(r.base);
+  });
+
+  it("perfect score adds +25", () => {
+    const r = calculateXpBreakdown({ ...baseInput, scorePct: 100 });
+    expect(r.bonuses.find((b) => b.reason === "perfect_score")?.amount).toBe(25);
+  });
+
+  it("streak bonus scales by 5/day and caps at 50, and needs streak >= 2", () => {
+    expect(calculateXpBreakdown({ ...baseInput, streak: 1 }).bonuses.find((b) => b.reason === "streak_bonus")).toBeUndefined();
+    expect(calculateXpBreakdown({ ...baseInput, streak: 4 }).bonuses.find((b) => b.reason === "streak_bonus")?.amount).toBe(20);
+    expect(calculateXpBreakdown({ ...baseInput, streak: 50 }).bonuses.find((b) => b.reason === "streak_bonus")?.amount).toBe(50);
+  });
+
+  it("first-of-day, daily-challenge and test bonuses are gated by their flags", () => {
+    const r = calculateXpBreakdown({ ...baseInput, isFirstToday: true, isDailyChallenge: true, isTest: true });
+    const amt = (reason: string) => r.bonuses.find((b) => b.reason === reason)?.amount;
+    expect(amt("first_quiz_of_day")).toBe(20);
+    expect(amt("daily_challenge")).toBe(30);
+    expect(amt("test_complete")).toBe(40);
+  });
+
+  it("comeback needs >=80 now AND a prior sub-50 average", () => {
+    expect(calculateXpBreakdown({ ...baseInput, scorePct: 85, recentAvgPct: 40 }).bonuses.find((b) => b.reason === "comeback")?.amount).toBe(30);
+    expect(calculateXpBreakdown({ ...baseInput, scorePct: 85, recentAvgPct: 60 }).bonuses.find((b) => b.reason === "comeback")).toBeUndefined();
+    expect(calculateXpBreakdown({ ...baseInput, scorePct: 70, recentAvgPct: 40 }).bonuses.find((b) => b.reason === "comeback")).toBeUndefined();
+  });
+
+  it("total = base + sum of bonuses", () => {
+    const r = calculateXpBreakdown({ scorePct: 100, streak: 3, isFirstToday: true, isDailyChallenge: false, isTest: false, recentAvgPct: null });
+    const sum = r.bonuses.reduce((s, b) => s + b.amount, 0);
+    expect(r.total).toBe(r.base + sum);
   });
 });

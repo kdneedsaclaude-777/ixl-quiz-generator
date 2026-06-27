@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import CMIcon from "@/components/CMIcon";
 
 export default function ForgotForm() {
   const [email, setEmail] = useState("");
@@ -21,16 +22,26 @@ export default function ForgotForm() {
 
   if (sent) {
     return (
-      <p className="rounded bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
-        If an account exists for that email, we&apos;ve sent a reset link. Check the dev console for the Ethereal preview URL.
-      </p>
+      <div className="rounded-2xl border border-cm-mint/40 bg-cm-mint-soft p-5 dark:border-emerald-800 dark:bg-emerald-950/40">
+        <span className="grid h-11 w-11 place-items-center rounded-xl" style={{ background: "var(--cm-mint)" }}>
+          <CMIcon name="bell" size={20} color="#fff" stroke={2} />
+        </span>
+        <p className="mt-3 text-sm text-slate-700 dark:text-emerald-100">
+          If an account exists for that email, we&apos;ve sent a reset link. Check the dev console for the Ethereal
+          preview URL.
+        </p>
+      </div>
     );
   }
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
+      <div className="flex items-center gap-2 rounded-xl bg-cm-blue-50 px-3 py-2 text-[13px] font-medium text-cm-blue dark:bg-slate-700/40 dark:text-slate-300">
+        <CMIcon name="lock" size={16} color="currentColor" />
+        Links expire shortly and can only be used once.
+      </div>
       <div>
-        <label htmlFor="email" className="block text-sm font-medium text-slate-900 dark:text-slate-100">Email</label>
+        <label htmlFor="email" className="cm-label dark:!text-slate-100">Email</label>
         <input
           id="email"
           type="email"
@@ -38,14 +49,10 @@ export default function ForgotForm() {
           onChange={(e) => setEmail(e.target.value)}
           required
           autoComplete="email"
-          className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-500 dark:bg-slate-700 dark:text-white"
+          className="cm-field dark:!border-slate-500 dark:!bg-slate-700 dark:!text-white"
         />
       </div>
-      <button
-        type="submit"
-        disabled={submitting}
-        className="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
-      >
+      <button type="submit" disabled={submitting} className="cm-btn primary w-full disabled:opacity-50">
         {submitting ? "Sending…" : "Send reset link"}
       </button>
     </form>

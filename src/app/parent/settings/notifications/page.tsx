@@ -13,9 +13,10 @@ export default async function NotificationsPage() {
   });
 
   return (
-    <main className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Notifications</h1>
+    <main className="mx-auto max-w-2xl space-y-6">
+      <header className="pt-1">
+        <div className="text-xs font-semibold uppercase tracking-wide text-cm-blue">Settings</div>
+        <h1 className="font-display text-4xl leading-tight tracking-tight text-slate-900 dark:text-slate-100">Notifications</h1>
         <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
           Control what we email you about each child's practice.
         </p>
@@ -26,6 +27,7 @@ export default async function NotificationsPage() {
           weeklyDigest: settings.weeklyDigest,
           alertBelowScorePct: settings.alertBelowScorePct ?? 60,
           alertNoPracticeDays: settings.alertNoPracticeDays ?? 7,
+          streakReminder: settings.streakReminder,
         }}
       />
     </main>

@@ -98,13 +98,14 @@ describe("isPracticeAllowedNow", () => {
     expect(r.detail).toMatch(/America\/New_York/);
   });
 
-  it("blocks when daily limit is hit", () => {
-    const r = isPracticeAllowedNow(view({ maxQuizzesPerDay: 3 }), 3, utc(15));
-    expect(r.allowed).toBe(false);
-    expect(r.reason).toBe("daily_limit_reached");
+  // Daily cap removed (client: unlimited generation). Even a legacy
+  // maxQuizzesPerDay with many quizzes today must not block.
+  it("ignores any legacy daily cap (unlimited generation)", () => {
+    const r = isPracticeAllowedNow(view({ maxQuizzesPerDay: 3 }), 99, utc(15));
+    expect(r.allowed).toBe(true);
   });
 
-  it("allows when both gates pass", () => {
+  it("allows when inside the window (cap ignored)", () => {
     const r = isPracticeAllowedNow(
       view({
         maxQuizzesPerDay: 3,
@@ -112,7 +113,7 @@ describe("isPracticeAllowedNow", () => {
         windowEnd: "20:00",
         windowTimezone: "UTC",
       }),
-      2,
+      99,
       utc(17),
     );
     expect(r).toEqual({ allowed: true });

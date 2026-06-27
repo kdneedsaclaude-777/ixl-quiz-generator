@@ -123,59 +123,67 @@ export default function HostConsole({ isSuperadmin }: { isSuperadmin: boolean })
   if (!code) {
     return (
       <main className="mx-auto max-w-lg space-y-6">
-        <header>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Host a Live Quiz</h1>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+        <header className="text-center">
+          <div className="flex justify-center">
+            <span className="cm-pill coral">Host mode</span>
+          </div>
+          <h1 className="font-display mt-3 text-5xl leading-[1] tracking-tight text-slate-900 dark:text-slate-100">
+            Host a Live Quiz
+          </h1>
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
             Pick the level, then share the join code on screen.
           </p>
         </header>
 
-        <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
+        <div className="cm-card space-y-4 p-6">
           <Select label="Grade" value={grade} setValue={setGrade} opts={[1, 2, 3, 4, 5, 6, 7, 8]} />
           <Select label="Difficulty" value={difficulty} setValue={setDifficulty} opts={[1, 2, 3, 4, 5]} />
           <Select label="Questions" value={count} setValue={setCount} opts={[5, 8, 10, 15, 20]} />
-          {error && <p className="rounded bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-950 dark:text-rose-200">{error}</p>}
+          {error && (
+            <p className="rounded-xl bg-cm-red-soft px-3 py-2 text-sm font-medium text-cm-red">{error}</p>
+          )}
           <button
             onClick={createSession}
             disabled={busy}
-            className="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+            className="cm-btn coral lg w-full disabled:opacity-50"
           >
             {busy ? "Creating…" : "Create session"}
           </button>
         </div>
 
         {isSuperadmin && (
-          <div className="space-y-3 rounded-lg border border-amber-300 bg-amber-50 p-6 dark:border-amber-800 dark:bg-amber-950/30">
-            <h2 className="text-sm font-bold uppercase tracking-wide text-amber-800 dark:text-amber-300">
-              Superadmin — moderate any session
+          <div className="rounded-2xl border border-cm-gold bg-cm-gold-soft/50 p-6 dark:border-cm-gold/40 dark:bg-cm-gold/10">
+            <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-cm-gold">
+              ⚙ Superadmin — moderate any session
             </h2>
-            <div className="flex gap-2">
+            <div className="mt-3 flex gap-2">
               <input
                 value={moderateCode}
                 onChange={(e) => setModerateCode(e.target.value.toUpperCase())}
                 placeholder="SESSION CODE"
+                aria-label="Session code to moderate"
                 maxLength={6}
-                className="flex-1 rounded border border-amber-300 bg-white px-3 py-2 text-sm font-mono tracking-widest text-slate-900 dark:border-amber-700 dark:bg-slate-800 dark:text-white"
+                className="flex-1 rounded-xl border border-cm-gold/60 bg-white px-3 py-2 font-mono text-sm tracking-widest text-slate-900 dark:border-cm-gold/40 dark:bg-slate-800 dark:text-white"
               />
               <button
                 onClick={() => attach(moderateCode)}
-                className="rounded bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
+                className="rounded-xl bg-cm-gold px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
               >
                 Moderate
               </button>
             </div>
             <button
               onClick={loadActive}
-              className="text-xs font-semibold text-amber-800 underline dark:text-amber-300"
+              className="mt-3 text-xs font-semibold text-cm-gold underline"
             >
               Refresh active sessions ({active.length})
             </button>
-            <ul className="space-y-1">
+            <ul className="mt-2 space-y-1">
               {active.map((a) => (
                 <li key={a.code}>
                   <button
                     onClick={() => attach(a.code)}
-                    className="flex w-full items-center justify-between rounded bg-white px-3 py-2 text-sm hover:bg-amber-100 dark:bg-slate-800 dark:hover:bg-slate-700"
+                    className="flex w-full items-center justify-between rounded-xl bg-white px-3 py-2 text-sm hover:bg-cm-gold-soft dark:bg-slate-800 dark:hover:bg-slate-700"
                   >
                     <span className="font-mono font-bold text-slate-800 dark:text-slate-100">{a.code}</span>
                     <span className="text-xs text-slate-500 dark:text-slate-400">
@@ -196,19 +204,19 @@ export default function HostConsole({ isSuperadmin }: { isSuperadmin: boolean })
 
   return (
     <main className="mx-auto max-w-3xl space-y-5">
-      <section className="rounded-xl border border-indigo-200 bg-indigo-50 p-6 text-center dark:border-indigo-800 dark:bg-indigo-950/40">
+      <section className="rounded-2xl border-2 border-cm-blue bg-cm-blue-50 p-6 text-center dark:border-cm-blue/50 dark:bg-cm-blue/15">
         {moderating && (
-          <p className="mb-1 text-xs font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+          <p className="mb-1 text-xs font-bold uppercase tracking-wide text-cm-gold">
             ⚙ Moderating as superadmin
           </p>
         )}
-        <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700 dark:text-indigo-300">
+        <p className="text-xs font-semibold uppercase tracking-wide text-cm-blue-600 dark:text-cm-blue-500">
           Join at {joinUrl} with code
         </p>
-        <p className="mt-1 text-5xl font-extrabold tracking-widest text-indigo-900 dark:text-indigo-100">
+        <p className="font-mono mt-1 text-6xl font-bold tracking-[0.25em] text-cm-blue-600 dark:text-cm-blue-500">
           {code}
         </p>
-        <p className="mt-2 text-sm text-indigo-800 dark:text-indigo-200">
+        <p className="mt-2 text-sm text-cm-blue-600 dark:text-cm-blue-500">
           {snap?.participantCount ?? 0} joined
           {phase !== "lobby" && ` · Q${(snap?.index ?? 0) + 1}/${snap?.total ?? 0}`}
           {phase === "question" && ` · ${snap?.answeredCount ?? 0} answered`}
@@ -220,9 +228,11 @@ export default function HostConsole({ isSuperadmin }: { isSuperadmin: boolean })
       )}
 
       {snap?.question && phase !== "lobby" && (
-        <section className="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
+        <section className="cm-card p-5">
           <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{snap.question.unit}</p>
-          <p className="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">{snap.question.prompt}</p>
+          <p className="font-display mt-1 text-2xl leading-tight tracking-tight text-slate-900 dark:text-slate-100">
+            {snap.question.prompt}
+          </p>
           <div className="mt-3 space-y-2">
             {Object.entries(snap.question.options).map(([k, v]) => {
               const isCorrect = phase === "reveal" && snap.question?.correct === k;
@@ -234,9 +244,9 @@ export default function HostConsole({ isSuperadmin }: { isSuperadmin: boolean })
               return (
                 <div
                   key={k}
-                  className={`rounded border px-3 py-2 text-sm ${
+                  className={`rounded-xl border px-3 py-2 text-sm ${
                     isCorrect
-                      ? "border-emerald-500 bg-emerald-50 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-100"
+                      ? "border-cm-mint bg-cm-mint-soft text-slate-900 dark:bg-cm-mint/20 dark:text-cm-mint"
                       : "border-slate-200 text-slate-700 dark:border-slate-700 dark:text-slate-200"
                   }`}
                 >
@@ -246,16 +256,18 @@ export default function HostConsole({ isSuperadmin }: { isSuperadmin: boolean })
                       {isCorrect && <span className="ml-2 font-semibold">✓</span>}
                     </span>
                     {phase === "reveal" && (
-                      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                      <span className="font-mono text-xs font-semibold text-slate-500 dark:text-slate-400">
                         {picks} ({pct}%)
                       </span>
                     )}
                   </div>
                   {phase === "reveal" && (
-                    <div className="mt-1 h-2 w-full rounded-full bg-slate-100 dark:bg-slate-900">
-                      <div
-                        className={`h-full rounded-full ${isCorrect ? "bg-emerald-500" : "bg-indigo-400"}`}
-                        style={{ width: `${pct}%` }}
+                    <div className="cm-bar mt-1">
+                      <i
+                        style={{
+                          width: `${pct}%`,
+                          background: isCorrect ? "var(--cm-mint)" : "var(--cm-blue)",
+                        }}
                       />
                     </div>
                   )}
@@ -266,7 +278,9 @@ export default function HostConsole({ isSuperadmin }: { isSuperadmin: boolean })
         </section>
       )}
 
-      {error && <p className="rounded bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-950 dark:text-rose-200">{error}</p>}
+      {error && (
+        <p className="rounded-xl bg-cm-red-soft px-3 py-2 text-sm font-medium text-cm-red">{error}</p>
+      )}
 
       {/* Flow controls */}
       <section className="flex flex-wrap gap-2">
@@ -285,7 +299,7 @@ export default function HostConsole({ isSuperadmin }: { isSuperadmin: boolean })
 
       {/* Moderation controls — host or superadmin */}
       {phase !== "ended" && (
-        <section className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900">
+        <section className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900">
           <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Controls
           </span>
@@ -305,7 +319,7 @@ export default function HostConsole({ isSuperadmin }: { isSuperadmin: boolean })
       )}
 
       {/* Roster with kick */}
-      <section className="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
+      <section className="cm-card p-5">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
           Players ({snap?.roster.length ?? 0})
         </h2>
@@ -321,7 +335,7 @@ export default function HostConsole({ isSuperadmin }: { isSuperadmin: boolean })
                   onClick={() => host("kick", p.id)}
                   aria-label={`Remove ${p.name}`}
                   title={`Remove ${p.name}`}
-                  className="flex h-5 w-5 items-center justify-center rounded-full bg-rose-100 text-xs font-bold text-rose-700 hover:bg-rose-200 dark:bg-rose-950/60 dark:text-rose-300"
+                  className="flex h-5 w-5 items-center justify-center rounded-full bg-cm-red-soft text-xs font-bold text-cm-red hover:opacity-80"
                 >
                   ×
                 </button>
@@ -335,20 +349,20 @@ export default function HostConsole({ isSuperadmin }: { isSuperadmin: boolean })
       </section>
 
       {/* Leaderboard */}
-      <section className="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+      <section className="cm-card p-5">
+        <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
           {phase === "ended" ? "🏆 Final results" : "Leaderboard"}
         </h2>
         <ol className="mt-3 space-y-1.5">
           {(snap?.leaderboard ?? []).map((p, i) => (
             <li
               key={p.name + i}
-              className="flex items-center justify-between rounded bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900"
+              className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900"
             >
               <span className="font-medium text-slate-800 dark:text-slate-100">
                 {i + 1}. {p.name}
               </span>
-              <span className="font-bold text-indigo-700 dark:text-indigo-300">{p.score}</span>
+              <span className="font-mono font-bold text-cm-blue-600 dark:text-cm-blue-500">{p.score}</span>
             </li>
           ))}
           {(snap?.leaderboard ?? []).length === 0 && (
@@ -382,11 +396,11 @@ function Countdown({
   const low = secs <= 5;
   return (
     <div
-      className={`rounded-lg border px-4 py-2 text-center text-2xl font-extrabold ${
+      className={`font-mono rounded-2xl border-2 px-4 py-3 text-center text-3xl font-bold ${
         paused
-          ? "border-amber-400 bg-amber-50 text-amber-800 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200"
+          ? "border-cm-gold bg-cm-gold-soft text-cm-gold"
           : low
-            ? "border-rose-400 bg-rose-50 text-rose-700 dark:border-rose-700 dark:bg-rose-950/40 dark:text-rose-200"
+            ? "border-cm-red bg-cm-red-soft text-cm-red"
             : "border-slate-200 bg-white text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
       }`}
     >
@@ -400,11 +414,11 @@ function Select({
 }: { label: string; value: number; setValue: (n: number) => void; opts: number[] }) {
   return (
     <label className="block text-sm">
-      <span className="font-medium text-slate-900 dark:text-slate-100">{label}</span>
+      <span className="cm-label">{label}</span>
       <select
         value={value}
         onChange={(e) => setValue(parseInt(e.target.value, 10))}
-        className="mt-1 w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+        className="cm-field"
       >
         {opts.map((o) => (
           <option key={o} value={o}>{o}</option>
@@ -416,11 +430,7 @@ function Select({
 
 function Ctl({ onClick, disabled, children }: { onClick: () => void; disabled?: boolean; children: React.ReactNode }) {
   return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
-    >
+    <button onClick={onClick} disabled={disabled} className="cm-btn coral disabled:opacity-50">
       {children}
     </button>
   );
@@ -430,9 +440,9 @@ function Mod({ onClick, danger, children }: { onClick: () => void; danger?: bool
   return (
     <button
       onClick={onClick}
-      className={`rounded-md px-3 py-1.5 text-xs font-semibold ${
+      className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
         danger
-          ? "border border-rose-300 bg-white text-rose-700 hover:bg-rose-50 dark:border-rose-800 dark:bg-slate-800 dark:text-rose-300"
+          ? "border border-cm-red/40 bg-white text-cm-red hover:bg-cm-red-soft dark:bg-slate-800"
           : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
       }`}
     >

@@ -4,7 +4,7 @@ import { resolveActiveStudent } from "@/lib/active-child";
 import { calculateXp, xpToLevel } from "@/lib/domain/gamification";
 import ChildResultsRunner from "./ChildResultsRunner";
 
-export const metadata = { title: "Your results — IXL Quiz" };
+export const metadata = { title: "Your results — QuizSpark" };
 
 export default async function ChildResultsPage({
   params,
@@ -50,12 +50,39 @@ export default async function ChildResultsPage({
     }
   });
 
-  const xpEarned = calculateXp(quiz.score);
-  const student = await prisma.student.findUnique({
-    where: { id: child.id },
-    select: { xp: true },
+  // Reconstruct the exact itemized XP for THIS quiz from its persisted XPLog
+  // rows (base + bonuses). Legacy quizzes (pre-itemization, quizId null) fall
+  // back to the base-only calculation so old results still render correctly.
+  const xpLogs = await prisma.xPLog.findMany({
+    where: { quizId: quiz.id },
+    orderBy: { createdAt: "asc" },
+    select: { delta: true, reason: true, createdAt: true },
   });
-  const finalXp = student?.xp ?? 0;
+  let base: number;
+  let bonuses: { reason: string; amount: number }[];
+  // finalXp/startXp are computed as the cumulative XP AS OF this quiz (not the
+  // live Student.xp) so revisiting an old quiz's results after later quizzes
+  // still shows the correct level transition for THIS quiz.
+  let finalXp: number;
+  if (xpLogs.length > 0) {
+    base = xpLogs.filter((l) => l.reason === "quiz_complete").reduce((s, l) => s + l.delta, 0);
+    bonuses = xpLogs
+      .filter((l) => l.reason !== "quiz_complete")
+      .map((l) => ({ reason: l.reason, amount: l.delta }));
+    const cutoff = xpLogs[xpLogs.length - 1].createdAt; // newest row for this quiz
+    const cumulative = await prisma.xPLog.aggregate({
+      where: { studentId: child.id, createdAt: { lte: cutoff } },
+      _sum: { delta: true },
+    });
+    finalXp = cumulative._sum.delta ?? 0;
+  } else {
+    // Legacy quiz (pre-itemization): fall back to base-from-score + live total.
+    base = calculateXp(quiz.score);
+    bonuses = [];
+    const student = await prisma.student.findUnique({ where: { id: child.id }, select: { xp: true } });
+    finalXp = student?.xp ?? 0;
+  }
+  const xpEarned = base + bonuses.reduce((s, b) => s + b.amount, 0);
   const startXp = Math.max(0, finalXp - xpEarned);
   const startLevel = xpToLevel(startXp);
   const finalLevel = xpToLevel(finalXp);
@@ -77,6 +104,7 @@ export default async function ChildResultsPage({
         finalLevel: finalLevel.level,
         finalCurrentLevelXp: finalLevel.currentLevelXp,
         finalNextLevelXp: finalLevel.nextLevelXp,
+        breakdown: { base, bonuses },
       }}
       badges={fromThisQuiz.map((b) => ({
         code: b.badgeCode,

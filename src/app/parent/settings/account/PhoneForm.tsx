@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import CMIcon from "@/components/CMIcon";
 
 type Stage = "idle" | "code-sent" | "verified";
 
@@ -91,99 +92,122 @@ export default function PhoneForm({
 
   if (stage === "verified") {
     return (
-      <div className="mt-3 space-y-3">
-        <div className="flex items-center justify-between rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm dark:border-emerald-700 dark:bg-emerald-950/40">
-          <span className="font-medium text-emerald-900 dark:text-emerald-100">
-            ✓ {phone}
-          </span>
-          <button
-            type="button"
-            onClick={removePhone}
-            disabled={busy}
-            className="rounded border border-rose-300 bg-white px-2.5 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50 dark:border-rose-700 dark:bg-slate-800 dark:text-rose-300"
-          >
-            Remove
-          </button>
+      <Shell>
+        <div className="mt-5 space-y-3">
+          <div className="flex items-center justify-between rounded-xl border border-cm-mint bg-cm-mint-soft px-4 py-3 text-sm dark:border-emerald-700 dark:bg-emerald-950/40">
+            <span className="flex items-center gap-2 font-semibold text-emerald-900 dark:text-emerald-100">
+              <CMIcon name="check" size={16} color="var(--cm-mint)" /> {phone}
+            </span>
+            <button
+              type="button"
+              onClick={removePhone}
+              disabled={busy}
+              className="rounded-full border border-cm-red bg-white px-3 py-1 text-xs font-semibold text-rose-700 hover:bg-cm-red-soft disabled:opacity-50 dark:border-rose-700 dark:bg-slate-800 dark:text-rose-300"
+            >
+              Remove
+            </button>
+          </div>
+          {info && <Note tone="ok">{info}</Note>}
+          {error && <Note tone="err">{error}</Note>}
         </div>
-        {info && <Note tone="ok">{info}</Note>}
-        {error && <Note tone="err">{error}</Note>}
-      </div>
+      </Shell>
     );
   }
 
   return (
-    <div className="mt-3 space-y-3">
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <input
-          type="tel"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          placeholder="+1 555 123 4567"
-          autoComplete="tel"
-          disabled={stage === "code-sent" || busy}
-          className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-500 dark:bg-slate-700 dark:text-white"
-        />
-        <button
-          type="button"
-          onClick={sendCode}
-          disabled={busy || !phone.trim() || stage === "code-sent"}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
-        >
-          {stage === "code-sent" ? "Code sent" : busy ? "Sending…" : "Send code"}
-        </button>
-      </div>
-
-      {stage === "code-sent" && (
-        <div className="space-y-2">
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <input
-              inputMode="numeric"
-              maxLength={6}
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-              placeholder="6-digit code"
-              className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-center font-mono text-lg tracking-widest text-slate-900 dark:border-slate-500 dark:bg-slate-700 dark:text-white"
-            />
-            <button
-              type="button"
-              onClick={verifyCode}
-              disabled={busy || code.length !== 6}
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-            >
-              {busy ? "Verifying…" : "Verify"}
-            </button>
-          </div>
+    <Shell>
+      <div className="mt-5 space-y-3">
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="+1 555 123 4567"
+            autoComplete="tel"
+            disabled={stage === "code-sent" || busy}
+            className="cm-field flex-1 disabled:opacity-60 dark:border-slate-500 dark:bg-slate-700 dark:text-white"
+          />
           <button
             type="button"
-            onClick={() => {
-              setStage("idle");
-              setCode("");
-              setDevCode(null);
-              setInfo(null);
-            }}
-            className="text-xs font-medium text-slate-500 underline hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+            onClick={sendCode}
+            disabled={busy || !phone.trim() || stage === "code-sent"}
+            className="cm-btn primary shrink-0 disabled:opacity-50"
           >
-            Change number
+            {stage === "code-sent" ? "Code sent" : busy ? "Sending…" : "Send code"}
           </button>
-          {devCode && (
-            <p className="rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-2 text-xs text-indigo-900 dark:border-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-100">
-              <span className="font-semibold">Dev mode — no real SMS provider:</span>{" "}
-              your code is <span className="font-mono">{devCode}</span>
-            </p>
-          )}
         </div>
-      )}
 
-      {info && <Note tone="ok">{info}</Note>}
-      {error && <Note tone="err">{error}</Note>}
-    </div>
+        {stage === "code-sent" && (
+          <div className="space-y-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input
+                inputMode="numeric"
+                maxLength={6}
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                placeholder="6-digit code"
+                className="cm-field flex-1 text-center font-mono text-lg tracking-widest dark:border-slate-500 dark:bg-slate-700 dark:text-white"
+              />
+              <button
+                type="button"
+                onClick={verifyCode}
+                disabled={busy || code.length !== 6}
+                className="cm-btn shrink-0 disabled:opacity-50"
+                style={{ background: "var(--cm-mint)", color: "#fff" }}
+              >
+                {busy ? "Verifying…" : "Verify"}
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setStage("idle");
+                setCode("");
+                setDevCode(null);
+                setInfo(null);
+              }}
+              className="text-xs font-semibold text-cm-blue underline hover:text-cm-blue-600 dark:text-slate-400 dark:hover:text-slate-200"
+            >
+              Change number
+            </button>
+            {devCode && (
+              <p className="rounded-xl border border-cm-blue bg-cm-blue-50 px-3 py-2 text-xs text-cm-blue-600 dark:border-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-100">
+                <span className="font-semibold">Dev mode — no real SMS provider:</span>{" "}
+                your code is <span className="font-mono">{devCode}</span>
+              </p>
+            )}
+          </div>
+        )}
+
+        {info && <Note tone="ok">{info}</Note>}
+        {error && <Note tone="err">{error}</Note>}
+      </div>
+    </Shell>
+  );
+}
+
+function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <section className="cm-card p-6 dark:border-slate-700 dark:bg-slate-800">
+      <div className="flex items-center gap-2">
+        <span className="grid h-7 w-7 place-items-center rounded-lg bg-cm-blue-50 text-cm-blue dark:bg-slate-700">
+          <CMIcon name="bell" size={15} color="var(--cm-blue)" />
+        </span>
+        <h2 className="text-[15px] font-bold text-slate-900 dark:text-slate-100">Phone</h2>
+        <span className="cm-pill ml-auto">Optional</span>
+      </div>
+      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+        Add a verified phone number as a second contact channel.
+      </p>
+      {children}
+    </section>
   );
 }
 
 function Note({ tone, children }: { tone: "ok" | "err"; children: React.ReactNode }) {
   const cls =
     tone === "ok"
-      ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
-      : "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-200";
-  return <p className={`rounded px-3 py-2 text-sm ${cls}`}>{children}</p>;
+      ? "bg-cm-mint-soft text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
+      : "bg-cm-red-soft text-rose-700 dark:bg-rose-950/40 dark:text-rose-200";
+  return <p className={`rounded-lg px-3 py-2 text-sm ${cls}`}>{children}</p>;
 }

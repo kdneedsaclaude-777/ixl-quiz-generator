@@ -716,7 +716,15 @@ export async function mockGenerateQuiz(req: GenerateQuizRequest): Promise<Genera
     throw new Error("Student has no topic groups selected.");
   }
 
-  const selectedGroupIds = student.topicSelections.map((s) => s.topicGroupId);
+  // Manual builder / targeted tiles can restrict generation to a subset of the
+  // student's topic groups; intersect so a client can never widen the pool past
+  // what the parent enabled. Falls back to all enabled groups (adaptive default).
+  const enabledGroupIds = student.topicSelections.map((s) => s.topicGroupId);
+  const selectedGroupIds =
+    req.topicGroupIds && req.topicGroupIds.length > 0
+      ? enabledGroupIds.filter((id) => req.topicGroupIds!.includes(id))
+      : enabledGroupIds;
+  const quizDifficulty = req.difficultyOverride ?? student.currentDifficulty;
   // Filter inactive topic groups + skills so admin toggles take effect
   // immediately on subsequent quiz generations.
   const skills = await prisma.skill.findMany({
@@ -767,7 +775,7 @@ export async function mockGenerateQuiz(req: GenerateQuizRequest): Promise<Genera
   for (const bucket of buckets) {
     const tpl = pickTemplate(bucket.skill);
     for (let i = 0; i < bucket.count; i++) {
-      const q = tpl(bucket.skill, student.currentDifficulty, variantCounter++);
+      const q = tpl(bucket.skill, quizDifficulty, variantCounter++);
       q.weak_skill_targeted = bucket.weakTargeted;
       q.remediation_flag = student.conceptMastery.find(
         (p) => p.skillId === bucket.skill.id,
@@ -815,7 +823,7 @@ export async function mockGenerateQuiz(req: GenerateQuizRequest): Promise<Genera
     };
   }
 
-  return { config, questions, difficulty: student.currentDifficulty };
+  return { config, questions, difficulty: quizDifficulty };
 }
 
 // Standalone generator for Live Classroom: builds a question set for a grade

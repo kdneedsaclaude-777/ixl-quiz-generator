@@ -77,12 +77,18 @@ export default async function AdminUsersPage({
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <main className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">User management</h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-          {total} parent account{total === 1 ? "" : "s"}.
-        </p>
+    <main className="space-y-6 text-[color:var(--shell-text)]">
+      <header className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-xs font-semibold tracking-wide text-[color:var(--shell-muted)]">PEOPLE</div>
+          <h1 className="font-display mt-1 text-4xl leading-none text-white">User management</h1>
+          <p className="mt-1.5 text-sm text-[color:var(--shell-muted)]">
+            {total} parent account{total === 1 ? "" : "s"}.
+          </p>
+        </div>
+        <a href="/admin/users/new" className="rounded-full bg-[#6366F1] px-4 py-2 text-sm font-semibold text-white hover:bg-[#4F46E5]">
+          + New employee
+        </a>
       </header>
       <UsersTable
         rows={rows}

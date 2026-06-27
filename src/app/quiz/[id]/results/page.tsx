@@ -48,7 +48,7 @@ export default async function QuizResultsPage({
   return (
     <main className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Quiz #{quiz.id} — results</h1>
+        <h1 className="font-display text-4xl leading-tight tracking-tight text-slate-900 dark:text-slate-100">Quiz #{quiz.id} — results</h1>
         <p className="text-sm text-slate-600 dark:text-slate-400">
           {quiz.student.name} · Grade {quiz.student.grade}
         </p>

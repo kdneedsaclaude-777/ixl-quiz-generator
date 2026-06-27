@@ -16,10 +16,15 @@ export default function QuizRunner({
   quizId,
   studentId,
   questions,
+  // "test" hides per-answer correctness/explanations on the quiz screen even
+  // after submit (revealed only on the results page); "practice" shows the
+  // inline feedback after submit. Defaults to practice for safety.
+  mode: quizMode = "practice",
 }: {
   quizId: number;
   studentId: number | null;
   questions: QuestionView[];
+  mode?: "practice" | "test";
 }) {
   const router = useRouter();
   const [answers, setAnswers] = useState<Record<number, string>>({});
@@ -118,7 +123,9 @@ export default function QuizRunner({
               selected={answers[q.id] ?? null}
               onSelect={(k) => setAnswer(q.id, k)}
               locked={Boolean(locked[q.id])}
-              result={results?.get(q.id) ?? null}
+              // Test mode never reveals correctness inline — feedback lives on
+              // the results page only.
+              result={quizMode === "test" ? null : (results?.get(q.id) ?? null)}
               // Timer only applies one-at-a-time — never in "all" mode, even
               // if the flag was left enabled from a previous card session.
               timerEnabled={timerEnabled && mode === "card"}

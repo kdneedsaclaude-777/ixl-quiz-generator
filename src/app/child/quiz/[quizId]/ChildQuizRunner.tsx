@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import UnitLabel from "@/components/UnitLabel";
 import QuestionVisual from "@/components/QuestionVisual";
+import CMIcon from "@/components/CMIcon";
 import { gradeAnswer, isFreeInputType } from "@/lib/domain/grading";
 
 type ChildQuestion = {
@@ -22,9 +22,10 @@ type ChildQuestion = {
 
 type Answer = { key: string; isCorrect: boolean };
 
-// Kid-friendly one-at-a-time runner. Each answer tap shows immediate feedback
-// (green if right, red if wrong) and a "Next →" button. Last question's Next
-// becomes "Finish quiz" and POSTs all answers in a single submit call.
+// Kid practice runner, rebuilt to match the design bundle (student.jsx
+// StudentQuiz + StudentFeedback): full-width segmented progress, skill pills,
+// serif question, brand-blue option cards, and an inline wrong-answer
+// explanation card. All grading/submit logic is unchanged.
 export default function ChildQuizRunner({
   quizId,
   childName,
@@ -48,7 +49,6 @@ export default function ChildQuizRunner({
   const isTyped = isFreeInputType(current.questionType);
   const typedValue = typedById[current.id] ?? "";
 
-  // Encouragement varies a bit to keep it from feeling robotic.
   const encouragements = useMemo(
     () => ({
       right: ["Nice!", "You got it!", "Yes!", "Boom!", "Perfect!"],
@@ -58,7 +58,7 @@ export default function ChildQuizRunner({
   );
 
   function pick(key: string) {
-    if (myAnswer) return; // can't change after picking
+    if (myAnswer) return;
     const isCorrect = gradeAnswer(current.questionType, key, current.correctAnswer);
     setAnswers((prev) => ({ ...prev, [current.id]: { key, isCorrect } }));
   }
@@ -91,155 +91,171 @@ export default function ChildQuizRunner({
     }
   }
 
+  const correctText = current.options[current.correctAnswer];
+
   return (
-    <main className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div className="text-sm font-semibold text-amber-700">
-          Question {idx + 1} of {total}
+    <main className="flex min-h-[calc(100vh-7rem)] flex-col">
+      {/* progress header: close + segmented dots + counter */}
+      <div className="flex items-center gap-3.5 pt-1.5">
+        <button
+          type="button"
+          onClick={() => router.push("/child/home")}
+          aria-label="Quit practice"
+          className="text-slate-400 hover:text-slate-600"
+        >
+          <CMIcon name="x" size={22} color="currentColor" />
+        </button>
+        <div className="flex flex-1 gap-1">
+          {questions.map((q, i) => {
+            const a = answers[q.id];
+            const bg = a?.isCorrect
+              ? "var(--cm-mint)"
+              : a
+                ? "var(--cm-rose)"
+                : i === idx
+                  ? "var(--cm-blue)"
+                  : "var(--slate-200)";
+            return <div key={q.id} className="h-2 flex-1 rounded-full" style={{ background: bg }} />;
+          })}
         </div>
-        <div className="flex gap-1.5">
-          {questions.map((q, i) => (
-            <span
-              key={q.id}
-              aria-hidden
-              className={`h-2 w-6 rounded-full ${
-                answers[q.id]?.isCorrect
-                  ? "bg-emerald-500"
-                  : answers[q.id]
-                    ? "bg-rose-500"
-                    : i === idx
-                      ? "bg-amber-400"
-                      : "bg-amber-200"
-              }`}
-            />
-          ))}
-        </div>
+        <div className="font-mono text-xs font-bold text-slate-700">{idx + 1}/{total}</div>
       </div>
 
-      <section className="rounded-3xl border-2 border-amber-200 bg-white p-6 shadow-sm sm:p-8">
-        <div className="text-xs font-semibold uppercase tracking-wider text-amber-700">
-          <UnitLabel unit={current.unit} title={current.skillTitle} code={current.skillCode} />
+      {/* skill chips */}
+      <div className="mt-5 flex items-center gap-2">
+        <span className="cm-pill indigo">{current.skillCode} · {current.skillTitle}</span>
+        <span className="cm-pill">{current.unit}</span>
+      </div>
+
+      {/* question */}
+      <div className="font-display mt-4 text-[26px] leading-[1.18] tracking-tight text-slate-900">
+        {current.questionText}
+      </div>
+
+      <QuestionVisual svg={current.visualSvg} note={current.visualNote} />
+
+      {/* typed input OR options */}
+      {isTyped ? (
+        <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+          <input
+            type="text"
+            inputMode="decimal"
+            autoComplete="off"
+            value={typedValue}
+            disabled={!!myAnswer}
+            onChange={(e) => setTypedById((p) => ({ ...p, [current.id]: e.target.value }))}
+            onKeyDown={(e) => { if (e.key === "Enter") checkTyped(); }}
+            placeholder="Type your answer"
+            className={`flex-1 rounded-2xl border-2 px-4 py-4 text-lg font-semibold outline-none ${
+              myAnswer
+                ? myAnswer.isCorrect
+                  ? "border-cm-mint bg-cm-mint-soft text-emerald-900"
+                  : "border-cm-rose bg-cm-rose-soft text-rose-900"
+                : "border-slate-200 bg-white text-slate-900 focus:border-cm-blue"
+            }`}
+          />
+          {!myAnswer && (
+            <button
+              type="button"
+              onClick={checkTyped}
+              disabled={typedValue.trim() === ""}
+              className="cm-btn primary lg disabled:opacity-40"
+            >
+              Check ✓
+            </button>
+          )}
         </div>
-        <h2 className="mt-2 text-2xl font-bold text-slate-900 sm:text-3xl">{current.questionText}</h2>
-
-        <QuestionVisual svg={current.visualSvg} note={current.visualNote} />
-
-        {isTyped ? (
-          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-            <label className="sr-only" htmlFor={`child-q-${current.id}`}>Your answer</label>
-            <input
-              id={`child-q-${current.id}`}
-              type="text"
-              inputMode="decimal"
-              autoComplete="off"
-              value={typedValue}
-              disabled={!!myAnswer}
-              onChange={(e) => setTypedById((p) => ({ ...p, [current.id]: e.target.value }))}
-              onKeyDown={(e) => { if (e.key === "Enter") checkTyped(); }}
-              placeholder="Type your answer"
-              className={`flex-1 rounded-2xl border-2 px-4 py-4 text-lg font-semibold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-300 ${
-                myAnswer
-                  ? myAnswer.isCorrect
-                    ? "border-emerald-500 bg-emerald-50 text-emerald-900"
-                    : "border-rose-500 bg-rose-50 text-rose-900"
-                  : "border-amber-200 bg-white text-slate-900"
-              }`}
-            />
-            {!myAnswer && (
-              <button
-                type="button"
-                onClick={checkTyped}
-                disabled={typedValue.trim() === ""}
-                className="rounded-2xl bg-amber-500 px-6 py-4 text-lg font-bold text-white shadow hover:bg-amber-600 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-300"
-              >
-                Check ✓
-              </button>
-            )}
-          </div>
-        ) : (
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+      ) : (
+        <div className="mt-[18px] grid gap-2.5">
           {Object.entries(current.options).map(([key, text]) => {
             const picked = myAnswer?.key === key;
             const isCorrect = key === current.correctAnswer;
-            const showAsRight = Boolean(myAnswer) && isCorrect;
-            const showAsWrong = picked && !isCorrect;
-            const tone = showAsRight
-              ? "border-emerald-500 bg-emerald-50 text-emerald-900"
-              : showAsWrong
-                ? "border-rose-500 bg-rose-50 text-rose-900"
+            const showRight = Boolean(myAnswer) && isCorrect;
+            const showWrong = picked && !isCorrect;
+            const cls = showRight
+              ? "border-cm-mint bg-cm-mint-soft"
+              : showWrong
+                ? "border-cm-rose bg-cm-rose-soft"
                 : picked
-                  ? "border-amber-500 bg-amber-100"
-                  : "border-amber-200 bg-white hover:border-amber-400 hover:bg-amber-50";
+                  ? "border-cm-blue"
+                  : "border-slate-200 bg-white";
             return (
               <button
                 key={key}
                 type="button"
                 onClick={() => pick(key)}
                 disabled={!!myAnswer}
-                className={`flex items-center gap-3 rounded-2xl border-2 px-4 py-4 text-left text-lg font-semibold transition-transform focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-300 ${tone} ${!myAnswer ? "hover:-translate-y-0.5" : ""}`}
+                className={`flex items-center gap-3.5 rounded-[18px] border-2 px-[18px] py-4 text-left ${cls}`}
+                style={picked && !myAnswer ? { boxShadow: "0 0 0 4px var(--cm-blue-50)" } : undefined}
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white font-mono text-base font-bold text-amber-700">{key}</span>
-                <span>{text}</span>
-                {showAsRight && <span aria-hidden className="ml-auto text-xl">✓</span>}
-                {showAsWrong && <span aria-hidden className="ml-auto text-xl">✗</span>}
+                <span
+                  className="grid h-9 w-9 place-items-center rounded-[10px] text-base font-extrabold"
+                  style={{
+                    background: showRight ? "var(--cm-mint)" : showWrong ? "var(--cm-rose)" : "var(--slate-100)",
+                    color: showRight || showWrong ? "#fff" : "var(--slate-700)",
+                  }}
+                >
+                  {key}
+                </span>
+                <span className="text-[17px] font-semibold text-slate-900">{text}</span>
+                {showRight && <span className="ml-auto"><CMIcon name="check" size={20} color="var(--cm-mint)" stroke={2.5} /></span>}
+                {showWrong && <span className="ml-auto"><CMIcon name="x" size={20} color="var(--cm-rose)" stroke={2.5} /></span>}
               </button>
             );
           })}
         </div>
-        )}
+      )}
 
-        {myAnswer && (
-          <div
-            className={`mt-5 rounded-2xl p-4 text-center text-base font-semibold ${
-              myAnswer.isCorrect
-                ? "bg-emerald-100 text-emerald-900"
-                : "bg-rose-100 text-rose-900"
-            }`}
-          >
-            {myAnswer.isCorrect ? (
-              <span>
-                <span className="mr-1 text-2xl">✓</span>
+      {/* practice feedback — encouragement / wrong-answer card */}
+      {myAnswer && (
+        <div className="mt-4">
+          {myAnswer.isCorrect ? (
+            <div className="flex items-center gap-3 rounded-[18px] p-3.5" style={{ background: "var(--cm-mint-soft)" }}>
+              <span className="grid h-9 w-9 place-items-center rounded-xl" style={{ background: "var(--cm-mint)" }}>
+                <CMIcon name="check" size={20} color="#fff" stroke={3} />
+              </span>
+              <div className="text-[15px] font-extrabold text-emerald-800">
                 {encouragements.right[idx % encouragements.right.length]}
-              </span>
-            ) : (
-              <span>
-                <span className="mr-1 text-2xl">✗</span>
-                {encouragements.wrong[idx % encouragements.wrong.length]}{" "}
-                The answer is{" "}
-                <span className="font-mono">{current.correctAnswer}</span>
-                {!isTyped && current.options[current.correctAnswer] && (
-                  <>: <span className="font-bold">{current.options[current.correctAnswer]}</span></>
-                )}
-                .
-              </span>
-            )}
-          </div>
-        )}
-      </section>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-[18px] border p-4" style={{ background: "var(--cm-rose-soft)", borderColor: "#FCA5A5" }}>
+              <div className="flex items-center gap-3">
+                <span className="grid h-9 w-9 place-items-center rounded-xl" style={{ background: "var(--cm-rose)" }}>
+                  <CMIcon name="x" size={20} color="#fff" stroke={3} />
+                </span>
+                <div>
+                  <div className="text-[15px] font-extrabold text-rose-900">
+                    {encouragements.wrong[idx % encouragements.wrong.length]}
+                  </div>
+                  <div className="text-[13px] text-rose-900/80">
+                    The right answer is{" "}
+                    <strong>
+                      {current.correctAnswer}
+                      {correctText ? ` · ${correctText}` : ""}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
-      {error && <p className="rounded bg-rose-100 px-3 py-2 text-sm text-rose-800">{error}</p>}
+      {error && <p className="mt-3 rounded-xl bg-rose-100 px-3 py-2 text-sm text-rose-800">{error}</p>}
 
-      <div className="flex justify-end">
-        {!isLast ? (
-          <button
-            type="button"
-            onClick={() => setIdx(idx + 1)}
-            disabled={!myAnswer}
-            className="rounded-2xl bg-amber-500 px-6 py-3 text-base font-bold text-white shadow hover:bg-amber-600 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-300"
-          >
-            Next →
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={finish}
-            disabled={!myAnswer || submitting}
-            className="rounded-2xl bg-emerald-500 px-6 py-3 text-base font-bold text-white shadow hover:bg-emerald-600 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300"
-          >
-            {submitting ? "Sending…" : `Finish quiz, ${childName}! 🎉`}
-          </button>
-        )}
-      </div>
+      {/* spacer pushes CTA to the bottom of the screen */}
+      <div className="flex-1" />
+
+      <button
+        type="button"
+        onClick={isLast ? finish : () => setIdx(idx + 1)}
+        disabled={!myAnswer || submitting}
+        className="cm-btn primary lg mt-[18px] w-full disabled:opacity-40"
+      >
+        {isLast ? (submitting ? "Sending…" : `Finish quiz, ${childName}! 🎉`) : "Next question"}
+        {!submitting && <CMIcon name="arrow" size={18} color="#fff" />}
+      </button>
     </main>
   );
 }

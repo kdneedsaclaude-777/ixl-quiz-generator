@@ -1,0 +1,142 @@
+/* Concept Mastery — design tokens */
+:root {
+  /* Brand — Concept Mastery logo palette */
+  --cm-blue: #5C7BAE;          /* steel blue from logo */
+  --cm-blue-600: #4A6896;
+  --cm-blue-500: #7090C0;      /* lighter logo blue */
+  --cm-blue-100: #DBE4F2;
+  --cm-blue-50:  #EDF2F9;
+
+  /* Keep --cm-indigo as alias so existing screens retune to brand blue */
+  --cm-indigo:     var(--cm-blue);
+  --cm-indigo-600: var(--cm-blue-600);
+  --cm-indigo-500: var(--cm-blue-500);
+  --cm-indigo-100: var(--cm-blue-100);
+  --cm-indigo-50:  var(--cm-blue-50);
+
+  --cm-red: #C25F5F;           /* warm red from logo top-curve */
+  --cm-red-soft: #F4DCDC;
+  --cm-coral: var(--cm-red);
+  --cm-coral-soft: var(--cm-red-soft);
+
+  --cm-gold: #E8A317;          /* gold from logo squares */
+  --cm-gold-soft: #FBEACB;
+  --cm-amber: var(--cm-gold);
+  --cm-amber-soft: var(--cm-gold-soft);
+
+  --cm-mint: #4E9F7B;          /* muted green to match warm palette */
+  --cm-mint-soft: #DCEFE3;
+
+  --cm-rose: #B14444;
+  --cm-rose-soft: #F4DCDC;
+
+  /* Kid palette — tuned to match logo */
+  --kid-yellow: var(--cm-gold);
+  --kid-pink: #C25F5F;
+  --kid-cyan: #7090C0;
+  --kid-violet: #6B72A8;
+
+  /* Neutrals — warm */
+  --paper: #FAFAF7;
+  --ink: #0F172A;
+  --ink-2: #1E293B;
+  --slate-700: #334155;
+  --slate-500: #64748B;
+  --slate-400: #94A3B8;
+  --slate-300: #CBD5E1;
+  --slate-200: #E2E8F0;
+  --slate-100: #F1F5F9;
+  --slate-50:  #F8FAFC;
+
+  /* Admin shell (dark) */
+  --shell-bg: #0B1220;
+  --shell-card: #111A2E;
+  --shell-border: #1F2A44;
+  --shell-text: #E2E8F0;
+  --shell-muted: #94A3B8;
+
+  /* Type */
+  --font-ui: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  --font-display: "Instrument Serif", "Times New Roman", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Radii */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 18px;
+  --r-xl: 24px;
+  --r-2xl: 32px;
+  --r-pill: 999px;
+
+  /* Shadows */
+  --shadow-card: 0 1px 2px rgba(15,23,42,.04), 0 8px 24px -8px rgba(15,23,42,.08);
+  --shadow-pop:  0 4px 12px rgba(15,23,42,.08), 0 24px 48px -12px rgba(15,23,42,.18);
+  --shadow-kid:  0 6px 0 rgba(15,23,42,.08); /* solid drop, kid buttons */
+}
+
+/* Resets specific to artboards (we keep them tight) */
+.cm * { box-sizing: border-box; }
+.cm { font-family: var(--font-ui); color: var(--ink); -webkit-font-smoothing: antialiased; }
+.cm .display { font-family: var(--font-display); font-weight: 400; letter-spacing: -.01em; }
+.cm .mono { font-family: var(--font-mono); }
+
+/* Mark / logo */
+.cm-mark {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--font-ui); font-weight: 800; letter-spacing: -.02em;
+  color: var(--ink);
+}
+.cm-mark .glyph {
+  width: 28px; height: 28px; border-radius: 9px;
+  background: var(--cm-indigo);
+  display: grid; place-items: center;
+  color: #fff; font-weight: 800; font-size: 15px;
+  box-shadow: inset 0 -3px 0 rgba(0,0,0,.18);
+}
+
+/* Common buttons */
+.cm-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 44px; padding: 0 18px; border-radius: var(--r-pill);
+  font-family: var(--font-ui); font-weight: 600; font-size: 15px;
+  border: 1px solid transparent; cursor: pointer; white-space: nowrap;
+}
+.cm-btn.primary { background: var(--cm-indigo); color: #fff; }
+.cm-btn.primary:hover { background: var(--cm-indigo-600); }
+.cm-btn.ghost { background: transparent; color: var(--ink); border-color: var(--slate-200); }
+.cm-btn.ghost:hover { background: var(--slate-50); }
+.cm-btn.coral { background: var(--cm-coral); color: #fff; }
+.cm-btn.dark { background: var(--ink); color: #fff; }
+.cm-btn.lg { height: 56px; font-size: 17px; padding: 0 24px; }
+
+/* Field */
+.cm-field {
+  height: 48px; width: 100%; padding: 0 14px; border-radius: var(--r-md);
+  border: 1px solid var(--slate-200); background: #fff;
+  font-family: var(--font-ui); font-size: 15px; color: var(--ink);
+}
+.cm-field:focus { outline: 2px solid var(--cm-indigo-100); border-color: var(--cm-indigo); }
+.cm-label { font-size: 13px; font-weight: 600; color: var(--slate-700); margin-bottom: 6px; display: block; }
+
+/* Card */
+.cm-card {
+  background: #fff; border-radius: var(--r-lg);
+  border: 1px solid var(--slate-200);
+  box-shadow: var(--shadow-card);
+}
+
+/* Pill / tag */
+.cm-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 26px; padding: 0 10px; border-radius: var(--r-pill);
+  font-size: 12px; font-weight: 600;
+  background: var(--slate-100); color: var(--slate-700);
+}
+.cm-pill.mint { background: var(--cm-mint-soft); color: #047857; }
+.cm-pill.coral { background: var(--cm-coral-soft); color: #B43326; }
+.cm-pill.amber { background: var(--cm-amber-soft); color: #92400E; }
+.cm-pill.indigo { background: var(--cm-indigo-50); color: var(--cm-indigo); }
+
+/* Sparkline-ish bars */
+.cm-bar { height: 6px; background: var(--slate-100); border-radius: 999px; overflow: hidden; }
+.cm-bar > i { display: block; height: 100%; background: var(--cm-indigo); border-radius: 999px; }

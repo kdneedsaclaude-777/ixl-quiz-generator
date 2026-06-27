@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import CMIcon from "@/components/CMIcon";
 
 export default function ResetForm({ token }: { token: string }) {
   const [pw, setPw] = useState("");
@@ -11,9 +12,15 @@ export default function ResetForm({ token }: { token: string }) {
 
   if (!token) {
     return (
-      <p className="rounded bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-950 dark:text-rose-200">
-        Missing reset token. Request a new link from <span className="font-medium">Forgot password</span>.
-      </p>
+      <div className="rounded-2xl border border-cm-red-soft bg-cm-red-soft/60 p-5 dark:border-rose-800 dark:bg-rose-950/40">
+        <span className="cm-pill coral">
+          <CMIcon name="x" size={14} color="currentColor" />
+          Invalid link
+        </span>
+        <p className="mt-2 text-sm text-slate-700 dark:text-rose-200">
+          Missing reset token. Request a new link from <span className="font-semibold">Forgot password</span>.
+        </p>
+      </div>
     );
   }
 
@@ -41,16 +48,27 @@ export default function ResetForm({ token }: { token: string }) {
 
   if (done) {
     return (
-      <p className="rounded bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
-        Password updated. <a href="/auth/login" className="font-semibold underline">Log in</a> with your new password.
-      </p>
+      <div className="rounded-2xl border border-cm-mint/40 bg-cm-mint-soft p-5 dark:border-emerald-800 dark:bg-emerald-950/40">
+        <span className="grid h-11 w-11 place-items-center rounded-xl" style={{ background: "var(--cm-mint)" }}>
+          <CMIcon name="check" size={22} color="#fff" stroke={2.25} />
+        </span>
+        <p className="mt-3 text-sm text-slate-700 dark:text-emerald-100">
+          Password updated.{" "}
+          <a href="/auth/login" className="font-semibold text-cm-mint underline dark:text-emerald-300">Log in</a> with
+          your new password.
+        </p>
+      </div>
     );
   }
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
+      <div className="flex items-center gap-2 rounded-xl bg-cm-blue-50 px-3 py-2 text-[13px] font-medium text-cm-blue dark:bg-slate-700/40 dark:text-slate-300">
+        <CMIcon name="lock" size={16} color="currentColor" />
+        Choose a strong password you haven&apos;t used before.
+      </div>
       <div>
-        <label htmlFor="pw" className="block text-sm font-medium text-slate-900 dark:text-slate-100">New password</label>
+        <label htmlFor="pw" className="cm-label dark:!text-slate-100">New password</label>
         <input
           id="pw"
           type="password"
@@ -58,12 +76,12 @@ export default function ResetForm({ token }: { token: string }) {
           onChange={(e) => setPw(e.target.value)}
           required
           autoComplete="new-password"
-          className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-500 dark:bg-slate-700 dark:text-white"
+          className="cm-field dark:!border-slate-500 dark:!bg-slate-700 dark:!text-white"
         />
         <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">≥8 chars, 1 uppercase, 1 number.</p>
       </div>
       <div>
-        <label htmlFor="confirm" className="block text-sm font-medium text-slate-900 dark:text-slate-100">Confirm</label>
+        <label htmlFor="confirm" className="cm-label dark:!text-slate-100">Confirm</label>
         <input
           id="confirm"
           type="password"
@@ -71,15 +89,16 @@ export default function ResetForm({ token }: { token: string }) {
           onChange={(e) => setConfirm(e.target.value)}
           required
           autoComplete="new-password"
-          className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-500 dark:bg-slate-700 dark:text-white"
+          className="cm-field dark:!border-slate-500 dark:!bg-slate-700 dark:!text-white"
         />
       </div>
-      {error && <p className="rounded bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-950 dark:text-rose-200">{error}</p>}
-      <button
-        type="submit"
-        disabled={submitting}
-        className="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
-      >
+      {error && (
+        <p className="cm-pill coral w-full justify-start !h-auto py-2">
+          <CMIcon name="x" size={14} color="currentColor" />
+          {error}
+        </p>
+      )}
+      <button type="submit" disabled={submitting} className="cm-btn primary w-full disabled:opacity-50">
         {submitting ? "Updating…" : "Update password"}
       </button>
     </form>

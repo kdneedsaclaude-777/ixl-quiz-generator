@@ -6,7 +6,7 @@ import { hashSync } from "bcryptjs";
 // accounts. Plus the 7 gamification badges + default feature flags.
 // Idempotent via upserts.
 
-const ADMIN_EMAIL = "admin@ixl.local";
+const ADMIN_EMAIL = "admin@cm.local";
 const ADMIN_PASSWORD = "Admin1234!";
 
 const ORG_NAME = "Demo Academy";
@@ -28,16 +28,26 @@ const BADGES = [
   { code: "speed_demon", name: "Speed Demon", description: "Completed a quiz in under 3 minutes.", icon: "⚡" },
   { code: "comeback_kid", name: "Comeback Kid", description: "Scored >80% on a topic after previously scoring <40%.", icon: "🌟" },
   { code: "dedicated", name: "Dedicated", description: "Practiced 7 days in a row.", icon: "📅" },
+  // Expansion badges (must mirror src/lib/domain/badge-catalog.ts).
+  { code: "streak3", name: "Warming Up", description: "Practiced 3 days in a row.", icon: "🌤️" },
+  { code: "streak14", name: "Two Weeks Strong", description: "Practiced 14 days in a row.", icon: "🗓️" },
+  { code: "streak30", name: "Unstoppable", description: "Practiced 30 days in a row.", icon: "🚀" },
+  { code: "level5", name: "Rising Star", description: "Reached Level 5.", icon: "⭐" },
+  { code: "level10", name: "Math Champion", description: "Reached Level 10.", icon: "👑" },
+  { code: "test_ace", name: "Test Ace", description: "Scored 100% on a real test.", icon: "🎓" },
+  { code: "daily_done", name: "Daily Challenge", description: "Completed a Daily Challenge.", icon: "📍" },
+  { code: "centurion", name: "Centurion", description: "Completed 100 quizzes.", icon: "🏅" },
 ];
 
 const FEATURE_FLAGS = [
   { key: "gamification", enabled: true, value: null },
+  { key: "leaderboard", enabled: true, value: null },
   { key: "timer", enabled: true, value: null },
   { key: "dark_mode", enabled: true, value: null },
   { key: "diagnostic_quiz", enabled: true, value: null },
   { key: "maintenance_mode", enabled: false, value: null },
   { key: "email_notifications", enabled: true, value: null },
-  { key: "app_name", enabled: true, value: "IXL Quiz App" },
+  { key: "app_name", enabled: true, value: "QuizSpark" },
   { key: "app_tagline", enabled: true, value: "Adaptive math practice for Grades 1–8." },
 ];
 

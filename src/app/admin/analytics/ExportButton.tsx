@@ -16,17 +16,17 @@ export default function ExportButton() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="rounded border border-slate-500 bg-slate-700 px-3 py-1.5 text-sm font-medium text-slate-100 hover:bg-slate-600"
+        className="rounded-full border border-[color:var(--shell-border)] bg-white/5 px-4 py-1.5 text-sm font-medium text-[color:var(--shell-text)] hover:bg-white/10"
       >
         Export CSV ▾
       </button>
       {open && (
-        <ul className="absolute right-0 z-10 mt-1 w-64 rounded-lg border border-slate-600 bg-slate-800 p-1 text-sm shadow-lg">
+        <ul className="absolute right-0 z-10 mt-1 w-64 rounded-xl border p-1 text-sm shadow-2xl" style={{ background: "var(--shell-card)", borderColor: "var(--shell-border)" }}>
           {DATASETS.map((d) => (
             <li key={d.key}>
               <a
                 href={`/api/admin/analytics/export?dataset=${d.key}`}
-                className="block rounded px-3 py-2 text-slate-100 hover:bg-slate-700"
+                className="block rounded-lg px-3 py-2 text-[color:var(--shell-text)] hover:bg-white/5"
                 onClick={() => setOpen(false)}
               >
                 {d.label}

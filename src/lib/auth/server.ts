@@ -132,6 +132,26 @@ export async function requireOwnedChild(parentId: string, childId: number) {
 }
 
 // API-route variant: returns the session-or-error rather than redirecting.
+// Any-role API gate: accepts any logged-in, non-suspended, non-deleted user.
+// Used by routes that several roles share (e.g. student approval). Returns a
+// minimal user view; callers do their own per-resource authorization.
+export type ApiSessionUser = { userId: string; email: string; name: string; role: string; orgId: string | null };
+
+export async function getSessionForApi(): Promise<
+  | { ok: true; user: ApiSessionUser }
+  | { ok: false; status: number; error: string }
+> {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { ok: false, status: 401, error: "Not authenticated." };
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { id: true, email: true, name: true, role: true, orgId: true, suspendedAt: true, deletedAt: true },
+  });
+  if (!user || user.deletedAt) return { ok: false, status: 401, error: "Account unavailable." };
+  if (user.suspendedAt) return { ok: false, status: 403, error: "Account suspended." };
+  return { ok: true, user: { userId: user.id, email: user.email, name: user.name, role: user.role, orgId: user.orgId } };
+}
+
 export async function getParentForApi(): Promise<
   | { ok: true; parent: ParentSession }
   | { ok: false; status: number; error: string }

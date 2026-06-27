@@ -4,7 +4,7 @@ import nodemailer, { type Transporter } from "nodemailer";
 // otherwise a lazily-created Ethereal test account (dev). Either way the
 // transport is cached for the process lifetime.
 let cachedTransporter: Transporter | null = null;
-let cachedFrom = "IXL Quiz <noreply@ixl.local>";
+let cachedFrom = "QuizSpark <noreply@cm.local>";
 
 function realSmtpConfigured(): boolean {
   return Boolean(
@@ -26,7 +26,7 @@ async function sendViaResend(args: {
   html?: string;
 }): Promise<void> {
   const from =
-    process.env.EMAIL_FROM ?? "IXL Quiz <onboarding@resend.dev>";
+    process.env.EMAIL_FROM ?? "QuizSpark <onboarding@resend.dev>";
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -75,7 +75,7 @@ async function getTransporter(): Promise<Transporter> {
     secure: test.smtp.secure,
     auth: { user: test.user, pass: test.pass },
   });
-  cachedFrom = `IXL Quiz <${test.user}>`;
+  cachedFrom = `QuizSpark <${test.user}>`;
   console.log(`[email] Ethereal account ready (user=${test.user}).`);
   return cachedTransporter;
 }

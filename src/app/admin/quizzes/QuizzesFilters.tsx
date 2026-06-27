@@ -43,14 +43,16 @@ export default function QuizzesFilters() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [grade, debounced, status]);
 
+  const ctrlCls =
+    "rounded-lg border px-2 py-1.5 text-sm text-white placeholder:text-[color:var(--shell-muted)] focus:outline-none focus:ring-2 focus:ring-[#A5B4FC]/40 border-[color:var(--shell-border)] bg-white/5";
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-700 bg-slate-800 p-3">
-      <span className="text-xs font-semibold uppercase tracking-wide text-slate-300">Filter:</span>
+    <div className="flex flex-wrap items-center gap-2 rounded-2xl border p-3" style={{ background: "var(--shell-card)", borderColor: "var(--shell-border)" }}>
+      <span className="text-xs font-semibold uppercase tracking-wide text-[color:var(--shell-muted)]">Filter:</span>
       <select
         aria-label="Filter by grade"
         value={grade}
         onChange={(e) => setGrade(e.target.value)}
-        className="rounded border border-slate-600 bg-slate-700 px-2 py-1.5 text-sm text-white"
+        className={ctrlCls}
       >
         <option value="all">All grades</option>
         {[1, 2, 3, 4, 5, 6, 7, 8].map((g) => <option key={g} value={g}>Grade {g}</option>)}
@@ -61,13 +63,13 @@ export default function QuizzesFilters() {
         onChange={(e) => setName(e.target.value)}
         placeholder="Search student name…"
         aria-label="Search student name"
-        className="rounded border border-slate-600 bg-slate-700 px-3 py-1.5 text-sm text-white placeholder:text-slate-400"
+        className={`${ctrlCls} px-3`}
       />
       <select
         aria-label="Filter by status"
         value={status}
         onChange={(e) => setStatus(e.target.value)}
-        className="rounded border border-slate-600 bg-slate-700 px-2 py-1.5 text-sm text-white"
+        className={ctrlCls}
       >
         <option value="completed">Completed only</option>
         <option value="active">Active (not yet submitted)</option>
@@ -77,7 +79,7 @@ export default function QuizzesFilters() {
         <button
           type="button"
           onClick={() => { setGrade("all"); setName(""); setStatus("completed"); }}
-          className="text-xs font-medium text-slate-300 underline hover:text-white"
+          className="text-xs font-medium text-[#A5B4FC] underline hover:text-white"
         >
           Clear
         </button>

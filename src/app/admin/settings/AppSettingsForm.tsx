@@ -37,31 +37,35 @@ export default function AppSettingsForm({ initial }: { initial: { appName: strin
     }
   }
 
+  const inputCls =
+    "mt-1 w-full rounded-lg border px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#A5B4FC]/40";
   return (
     <div className="mt-3 space-y-3">
       <label className="block text-sm">
-        <span className="text-slate-300">App name</span>
+        <span className="font-medium text-[color:var(--shell-text)]">App name</span>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="mt-1 w-full rounded border border-slate-500 bg-slate-700 px-3 py-2 text-sm text-white"
+          className={inputCls}
+          style={{ borderColor: "var(--shell-border)", background: "rgba(255,255,255,.05)" }}
         />
       </label>
       <label className="block text-sm">
-        <span className="text-slate-300">Tagline</span>
+        <span className="font-medium text-[color:var(--shell-text)]">Tagline</span>
         <input
           value={tagline}
           onChange={(e) => setTagline(e.target.value)}
-          className="mt-1 w-full rounded border border-slate-500 bg-slate-700 px-3 py-2 text-sm text-white"
+          className={inputCls}
+          style={{ borderColor: "var(--shell-border)", background: "rgba(255,255,255,.05)" }}
         />
       </label>
-      {error && <p className="rounded bg-rose-950/60 px-3 py-2 text-sm text-rose-200">{error}</p>}
-      {saved && <p className="rounded bg-emerald-950/60 px-3 py-2 text-sm text-emerald-200">Saved.</p>}
+      {error && <p className="rounded-xl px-3 py-2 text-sm" style={{ background: "rgba(194,95,95,.15)", color: "#FCA5A5" }}>{error}</p>}
+      {saved && <p className="rounded-xl px-3 py-2 text-sm" style={{ background: "rgba(78,159,123,.15)", color: "#86EFAC" }}>Saved.</p>}
       <button
         type="button"
         onClick={save}
         disabled={saving}
-        className="rounded bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+        className="rounded-full bg-[#6366F1] px-5 py-2 text-sm font-semibold text-white hover:bg-[#4F46E5] disabled:opacity-50"
       >
         {saving ? "Saving…" : "Save"}
       </button>

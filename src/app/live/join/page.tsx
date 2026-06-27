@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Logo } from "@/components/Logo";
 
 export default function LiveJoinPage() {
   const router = useRouter();
@@ -35,37 +36,46 @@ export default function LiveJoinPage() {
   }
 
   return (
-    <main className="mx-auto max-w-sm space-y-6 pt-10">
+    <main className="mx-auto flex min-h-[70vh] w-full max-w-sm flex-col justify-center px-2">
+      <div className="mb-6 flex justify-center">
+        <Logo size={32} />
+      </div>
       <header className="text-center">
-        <h1 className="text-3xl font-extrabold text-amber-900 dark:text-amber-100">Join the quiz! 🎮</h1>
-        <p className="mt-1 text-sm text-amber-800 dark:text-amber-200">Enter the code on the screen.</p>
+        <div className="flex justify-center">
+          <span className="cm-pill coral">Live quiz</span>
+        </div>
+        <h1 className="font-display mt-3 text-5xl leading-[1] tracking-tight text-slate-900 dark:text-slate-100">
+          Join the game!
+        </h1>
+        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          Enter the code shown on the screen.
+        </p>
       </header>
-      <form
-        onSubmit={join}
-        className="space-y-4 rounded-2xl border-2 border-amber-200 bg-white p-6 dark:border-amber-800/50 dark:bg-amber-950/20"
-      >
+      <form onSubmit={join} className="cm-card mt-6 space-y-4 p-6">
         <input
           value={code}
           onChange={(e) => setCode(e.target.value.toUpperCase())}
           placeholder="CODE"
+          aria-label="Session code"
           required
           maxLength={6}
-          className="w-full rounded-xl border-2 border-amber-300 bg-white px-4 py-3 text-center text-2xl font-extrabold tracking-widest text-slate-900 dark:bg-amber-950/30 dark:text-white"
+          className="w-full rounded-2xl border-2 border-slate-200 bg-white px-4 py-4 text-center font-mono text-3xl font-bold tracking-[0.3em] text-slate-900 focus:border-cm-blue dark:border-slate-700 dark:bg-slate-900 dark:text-white"
         />
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Your name"
+          aria-label="Your name"
           required
           maxLength={24}
-          className="w-full rounded-xl border-2 border-amber-200 bg-white px-4 py-3 text-lg text-slate-900 dark:bg-amber-950/30 dark:text-white"
+          className="w-full rounded-2xl border-2 border-slate-200 bg-white px-4 py-3 text-lg text-slate-900 focus:border-cm-blue dark:border-slate-700 dark:bg-slate-900 dark:text-white"
         />
-        {error && <p className="rounded bg-rose-100 px-3 py-2 text-sm text-rose-800">{error}</p>}
-        <button
-          type="submit"
-          disabled={busy}
-          className="w-full rounded-xl bg-amber-500 px-4 py-3 text-lg font-bold text-white hover:bg-amber-600 disabled:opacity-50"
-        >
+        {error && (
+          <p className="rounded-xl bg-cm-red-soft px-3 py-2 text-sm font-medium text-cm-red">
+            {error}
+          </p>
+        )}
+        <button type="submit" disabled={busy} className="cm-btn coral lg w-full disabled:opacity-50">
           {busy ? "Joining…" : "Let's go!"}
         </button>
       </form>

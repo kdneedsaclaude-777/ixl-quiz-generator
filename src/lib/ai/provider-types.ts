@@ -14,6 +14,12 @@ export type GenerateQuizRequest = {
   studentId: number;
   questionCount?: number;
   isFirstQuiz?: boolean;
+  // Manual-builder / targeted overrides. When topicGroupIds is set, generation
+  // is restricted to skills in those groups (the 60/25/15 weak/adjacent/other
+  // weighting still runs inside the restricted pool). difficultyOverride pins
+  // every question to a fixed level instead of the student's adaptive level.
+  topicGroupIds?: number[];
+  difficultyOverride?: number;
 };
 
 export type GenerateQuizResult = {

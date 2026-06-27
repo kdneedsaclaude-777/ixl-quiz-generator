@@ -30,27 +30,32 @@ export default function FeatureFlagsTable({ rows, danger = false }: { rows: Flag
 
   return (
     <div className="mt-3 space-y-2">
-      {error && <p className="rounded bg-rose-950/60 px-3 py-2 text-sm text-rose-200">{error}</p>}
-      <ul className="divide-y divide-slate-700 rounded-lg border border-slate-700 bg-slate-900/40">
-        {rows.length === 0 && <li className="px-4 py-3 text-sm text-slate-400">No flags here.</li>}
-        {rows.map((r) => {
+      {error && <p className="rounded-xl px-3 py-2 text-sm" style={{ background: "rgba(194,95,95,.15)", color: "#FCA5A5" }}>{error}</p>}
+      <ul className="overflow-hidden rounded-2xl border" style={{ borderColor: "var(--shell-border)", background: "rgba(255,255,255,.02)" }}>
+        {rows.length === 0 && <li className="px-4 py-3 text-sm text-[color:var(--shell-muted)]">No flags here.</li>}
+        {rows.map((r, i) => {
           const isOn = r.enabled;
-          const pill = danger && isOn
-            ? "bg-rose-700 text-white"
+          const pillStyle: React.CSSProperties = danger && isOn
+            ? { background: "var(--cm-coral)", color: "#fff" }
             : isOn
-              ? "bg-emerald-600 text-white"
-              : "bg-slate-700 text-slate-300";
+              ? { background: "var(--cm-mint)", color: "#fff" }
+              : { background: "rgba(255,255,255,.08)", color: "var(--shell-muted)" };
           return (
-            <li key={r.key} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
+            <li
+              key={r.key}
+              className="flex items-center justify-between gap-3 px-4 py-3 text-sm"
+              style={{ borderTop: i === 0 ? "none" : "1px solid var(--shell-border)" }}
+            >
               <div>
-                <div className="font-mono text-slate-100">{r.key}</div>
-                <div className="text-xs text-slate-400">{r.description}</div>
+                <div className="font-mono text-white">{r.key}</div>
+                <div className="text-xs text-[color:var(--shell-muted)]">{r.description}</div>
               </div>
               <button
                 type="button"
                 onClick={() => toggle(r)}
                 disabled={busy === r.key}
-                className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${pill} disabled:opacity-50`}
+                className="rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider disabled:opacity-50"
+                style={pillStyle}
                 aria-pressed={isOn}
               >
                 {busy === r.key ? "…" : isOn ? "On" : "Off"}

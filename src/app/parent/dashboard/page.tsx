@@ -1,176 +1,201 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireParentSession } from "@/lib/auth/server";
-import Avatar from "@/components/Avatar";
+import { studentEmoji } from "@/lib/student-emoji";
+import Spark from "@/components/Spark";
+import CMIcon from "@/components/CMIcon";
 import VerifyBanner from "./VerifyBanner";
-import SummaryCards from "./SummaryCards";
-// Lazy chart client wrapper so recharts isn't in the initial JS bundle.
-import ChildTrendChart from "./ChildTrendChartLazy";
-import type { TrendRow, ChildSeries } from "./ChildTrendChart";
+import NotificationBanners from "./NotificationBanners";
 
-const CHILD_COLORS = ["#6366f1", "#ec4899", "#10b981", "#f59e0b", "#06b6d4", "#a855f7"];
-
-function dayKey(d: Date): string {
-  // YYYY-MM-DD in local time
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
+// Parent dashboard, rebuilt to match the design bundle (parent.jsx
+// ParentDashboardMobile): a "this week" Spark card, then a card per child
+// with emoji avatar, 7-day average, mini topic bars, and weak/assigned pills.
+// All values are real.
 export default async function ParentDashboardPage() {
   const parent = await requireParentSession();
+
   const user = await prisma.user.findUnique({
     where: { id: parent.userId },
     select: { name: true, email: true, emailVerified: true },
   });
 
+  // Unread in-app notifications (billing events).
+  const notifications = await prisma.notification.findMany({
+    where: { userId: parent.userId, readAt: null },
+    orderBy: { createdAt: "desc" },
+    take: 5,
+    select: { id: true, title: true, body: true, href: true },
+  });
+
   const children = await prisma.student.findMany({
     where: { parentId: parent.userId },
     orderBy: { createdAt: "desc" },
-    select: { id: true, name: true, grade: true, currentDifficulty: true, createdAt: true },
+    include: {
+      conceptMastery: {
+        select: { totalAttempts: true, totalCorrect: true, skill: { select: { topicGroup: { select: { name: true } } } } },
+      },
+      homework: { where: { status: "active" }, select: { id: true } },
+    },
   });
-
-  // Quizzes from the last 30 days for chart + summary computation.
-  const sinceDate = new Date();
-  sinceDate.setDate(sinceDate.getDate() - 29);
-  sinceDate.setHours(0, 0, 0, 0);
-
   const childIds = children.map((c) => c.id);
-  const quizzes = childIds.length
+
+  // Last 7 days of completed quizzes (family Spark + per-child average).
+  const weekStart = new Date();
+  weekStart.setDate(weekStart.getDate() - 6);
+  weekStart.setHours(0, 0, 0, 0);
+  const weekQuizzes = childIds.length
     ? await prisma.quiz.findMany({
-        where: {
-          studentId: { in: childIds },
-          status: "completed",
-          completedAt: { gte: sinceDate },
-        },
+        where: { studentId: { in: childIds }, status: "completed", completedAt: { gte: weekStart } },
         select: { studentId: true, score: true, completedAt: true },
       })
     : [];
 
-  // Week summary (last 7 days).
-  const weekStart = new Date();
-  weekStart.setDate(weekStart.getDate() - 6);
-  weekStart.setHours(0, 0, 0, 0);
-  const weekQuizzes = quizzes.filter((q) => q.completedAt && q.completedAt >= weekStart && typeof q.score === "number");
-  const weekAvgScore = weekQuizzes.length
-    ? weekQuizzes.reduce((acc, q) => acc + (q.score ?? 0), 0) / weekQuizzes.length
-    : null;
-
-  // Hardest topic across all kids: lowest accuracy from ConceptMastery.
-  const hardestTopic = await pickHardestTopic(childIds);
-
-  // Build chart rows: one row per day for last 30 days, one numeric column per child.
-  const days: TrendRow[] = [];
-  for (let i = 0; i < 30; i++) {
-    const d = new Date(sinceDate);
-    d.setDate(sinceDate.getDate() + i);
-    days.push({ day: `${d.getMonth() + 1}/${d.getDate()}` } as TrendRow);
-  }
-  const dayKeyToIdx = new Map<string, number>();
-  for (let i = 0; i < 30; i++) {
-    const d = new Date(sinceDate);
-    d.setDate(sinceDate.getDate() + i);
-    dayKeyToIdx.set(dayKey(d), i);
-  }
-  const accBy = new Map<string, { sum: number; n: number }>();
-  for (const q of quizzes) {
+  // Per-day average for the family Spark (7 points).
+  const dayBuckets: { sum: number; n: number }[] = Array.from({ length: 7 }, () => ({ sum: 0, n: 0 }));
+  for (const q of weekQuizzes) {
     if (!q.completedAt || typeof q.score !== "number") continue;
-    const idx = dayKeyToIdx.get(dayKey(q.completedAt));
-    if (idx === undefined) continue;
-    const child = children.find((c) => c.id === q.studentId);
-    if (!child) continue;
-    const key = `${idx}:${child.name}`;
-    const cur = accBy.get(key) ?? { sum: 0, n: 0 };
-    cur.sum += q.score;
-    cur.n += 1;
-    accBy.set(key, cur);
+    const offset = Math.floor((q.completedAt.getTime() - weekStart.getTime()) / 86_400_000);
+    if (offset >= 0 && offset < 7) { dayBuckets[offset].sum += q.score; dayBuckets[offset].n += 1; }
   }
-  for (let i = 0; i < 30; i++) {
-    for (const c of children) {
-      const v = accBy.get(`${i}:${c.name}`);
-      if (v) days[i][c.name] = Math.round(v.sum / v.n);
+  const sparkPoints = dayBuckets.map((b) => (b.n ? Math.round(b.sum / b.n) : 0));
+  const hasSpark = sparkPoints.some((p) => p > 0);
+
+  const recentByChild = new Map<number, number[]>();
+  for (const q of weekQuizzes) {
+    if (typeof q.score !== "number") continue;
+    const arr = recentByChild.get(q.studentId) ?? [];
+    arr.push(Math.round(q.score));
+    recentByChild.set(q.studentId, arr);
+  }
+
+  const kid = children.map((c) => {
+    const scores = recentByChild.get(c.id) ?? [];
+    const avg = scores.length ? Math.round(scores.reduce((a, s) => a + s, 0) / scores.length) : null;
+    const byTopic = new Map<string, { att: number; cor: number }>();
+    for (const m of c.conceptMastery) {
+      const k = m.skill.topicGroup.name;
+      const cur = byTopic.get(k) ?? { att: 0, cor: 0 };
+      cur.att += m.totalAttempts; cur.cor += m.totalCorrect;
+      byTopic.set(k, cur);
     }
-  }
-  const series: ChildSeries[] = children.map((c, i) => ({ name: c.name, color: CHILD_COLORS[i % CHILD_COLORS.length] }));
+    const weak = [...byTopic.entries()]
+      .filter(([, v]) => v.att >= 3)
+      .map(([name, v]) => ({ name, acc: v.cor / v.att }))
+      .sort((a, b) => a.acc - b.acc)[0]?.name ?? null;
+    const bars = [...byTopic.values()].slice(0, 4).map((v) => (v.att ? Math.round((v.cor / v.att) * 100) : 0));
+    while (bars.length < 4) bars.push(0);
+    return { ...c, avg, weak, bars, assigned: c.homework.length };
+  });
+
+  const weekCount = weekQuizzes.length;
 
   return (
-    <main className="space-y-6">
+    <main className="mx-auto max-w-md space-y-5">
       {user && !user.emailVerified && <VerifyBanner email={user.email ?? ""} />}
+      <NotificationBanners initial={notifications} />
 
-      <header>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Welcome, {user?.name ?? "Parent"}</h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-          Your family's practice at a glance.
-        </p>
+      <header className="flex items-center justify-between pt-1">
+        <div>
+          <div className="text-xs text-slate-500">Good morning,</div>
+          <div className="text-lg font-extrabold text-slate-900">{user?.name ?? "Parent"}</div>
+        </div>
+        <Link
+          href="/parent/notifications"
+          className="relative grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white"
+          aria-label="Notifications"
+        >
+          <CMIcon name="bell" size={18} color="var(--slate-700)" />
+        </Link>
       </header>
 
-      <SummaryCards
-        s={{
-          childCount: children.length,
-          weekQuizzes: weekQuizzes.length,
-          weekAvgScore,
-          hardestTopic,
-        }}
-      />
-
-      <section>
-        <h2 className="font-semibold text-slate-900 dark:text-slate-100">Score trend</h2>
+      {/* This week */}
+      <section className="rounded-[20px] border border-slate-200 bg-white p-4">
+        <div>
+          <div className="text-xs font-semibold text-slate-500">THIS WEEK</div>
+          <div className="font-display mt-1 text-3xl leading-none">
+            {weekCount} quiz{weekCount === 1 ? "" : "zes"}
+          </div>
+        </div>
         <div className="mt-3">
-          <ChildTrendChart data={days} children={series} />
+          {hasSpark ? (
+            <Spark
+              points={sparkPoints}
+              w={300}
+              h={70}
+              domain={[0, 100]}
+              gridlines={[0, 50, 100]}
+              unitSuffix="%"
+              baseline
+              padRight={26}
+              ariaLabel="Daily average score this week, 0 to 100 percent"
+            />
+          ) : (
+            <p className="py-4 text-center text-xs text-slate-400">No completed quizzes this week yet.</p>
+          )}
+        </div>
+        {/* Day labels align under the plot columns, not the % gutter (padRight). */}
+        <div className="flex justify-between pr-[26px] text-[10px] font-semibold text-slate-400">
+          {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => <span key={i}>{d}</span>)}
         </div>
       </section>
 
-      <section>
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-slate-900 dark:text-slate-100">Your children</h2>
-          <Link href="/onboarding" className="rounded bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700">
-            + Add child
-          </Link>
-        </div>
-        {children.length === 0 ? (
-          <p className="mt-3 rounded-lg border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
-            No children yet. Click <span className="font-semibold">+ Add child</span> to begin.
-          </p>
-        ) : (
-          <ul className="mt-3 grid gap-3 sm:grid-cols-2">
-            {children.map((c) => (
-              <li key={c.id} className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
-                <Avatar name={c.name} />
-                <div className="flex-1">
-                  <div className="font-medium text-slate-900 dark:text-slate-100">{c.name}</div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400">Grade {c.grade} · difficulty {c.currentDifficulty}</div>
+      {/* Kids */}
+      <h3 className="text-sm font-bold text-slate-700">YOUR KIDS</h3>
+      {kid.length === 0 ? (
+        <p className="rounded-[18px] border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">
+          No children yet. <Link href="/onboarding" className="font-semibold text-cm-blue">Add a child</Link> to begin.
+        </p>
+      ) : (
+        kid.map((c) => (
+          <div key={c.id} className="cm-card p-3.5">
+            <div className="flex items-center gap-3">
+              <div
+                className="grid h-[52px] w-[52px] place-items-center rounded-2xl bg-white text-2xl"
+                style={{ border: "2px solid var(--cm-blue)" }}
+              >
+                {studentEmoji(c.id)}
+              </div>
+              <div className="flex-1">
+                <div className="text-base font-bold text-slate-900">{c.name}</div>
+                <div className="text-xs text-slate-500">Grade {c.grade}</div>
+              </div>
+              <div className="text-right">
+                <div
+                  className="font-display text-[22px]"
+                  style={{ color: c.avg === null ? "var(--slate-400)" : c.avg >= 80 ? "var(--cm-mint)" : "var(--cm-gold)" }}
+                >
+                  {c.avg === null ? "—" : `${c.avg}%`}
                 </div>
-                <Link href={`/parent/child/${c.id}`} className="text-xs font-semibold text-indigo-600 hover:underline dark:text-indigo-400">
-                  Open →
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+                <div className="text-[10px] font-semibold text-slate-500">AVG (7D)</div>
+              </div>
+            </div>
+
+            <div className="mt-3 flex gap-1.5">
+              {c.bars.map((p, j) => (
+                <div key={j} className="flex-1">
+                  <div className="cm-bar">
+                    <i style={{ width: `${p}%`, background: p < 60 ? "var(--cm-coral)" : "var(--cm-blue)" }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-2.5 flex items-center justify-between">
+              <div className="flex gap-1.5">
+                {c.weak && <span className="cm-pill coral" style={{ height: 22, fontSize: 11 }}>⚠ {c.weak}</span>}
+                {c.assigned > 0 && <span className="cm-pill" style={{ height: 22, fontSize: 11 }}>📌 {c.assigned} assigned</span>}
+              </div>
+              <Link href={`/parent/child/${c.id}`} className="cm-btn ghost" style={{ height: 32, padding: "0 14px", fontSize: 13 }}>
+                View
+              </Link>
+            </div>
+          </div>
+        ))
+      )}
+
+      <Link href="/onboarding" className="cm-btn primary w-full justify-center">
+        <CMIcon name="plus" size={16} color="#fff" /> Add a child
+      </Link>
     </main>
   );
-}
-
-async function pickHardestTopic(childIds: number[]) {
-  if (childIds.length === 0) return null;
-  const mastery = await prisma.conceptMastery.findMany({
-    where: { studentId: { in: childIds } },
-    select: {
-      totalAttempts: true,
-      totalCorrect: true,
-      skill: { select: { topicGroup: { select: { letter: true, name: true } } } },
-    },
-  });
-  const byLetter = new Map<string, { letter: string; name: string; attempts: number; correct: number }>();
-  for (const m of mastery) {
-    const k = m.skill.topicGroup.letter;
-    const cur = byLetter.get(k) ?? { letter: k, name: m.skill.topicGroup.name, attempts: 0, correct: 0 };
-    cur.attempts += m.totalAttempts;
-    cur.correct += m.totalCorrect;
-    byLetter.set(k, cur);
-  }
-  const ranked = [...byLetter.values()]
-    .filter((r) => r.attempts >= 3)
-    .map((r) => ({ ...r, accuracy: r.correct / r.attempts }))
-    .sort((a, b) => a.accuracy - b.accuracy);
-  return ranked[0] ?? null;
 }

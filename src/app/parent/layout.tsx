@@ -1,39 +1,42 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import RoleNav from "@/components/layouts/RoleNav";
+import SidebarShell from "@/components/layouts/SidebarShell";
 import { loadImpersonatedUser } from "@/lib/impersonation";
 import ImpersonationBanner from "@/components/ImpersonationBanner";
 import { isMaintenanceModeOn } from "@/lib/maintenance";
+import { billingEnabled } from "@/lib/plan";
 
+// Parent app — left-sidebar shell from the design bundle (parent.jsx):
+// white sidebar, steel-blue active pills, Logout pinned at the foot.
 export default async function ParentLayout({ children }: { children: React.ReactNode }) {
-  // Admins viewing /parent/* via impersonation still come through here; we
-  // want them to keep working during maintenance, so let impersonated
-  // sessions bypass the gate.
   const impersonated = await loadImpersonatedUser();
   if (!impersonated && (await isMaintenanceModeOn())) {
     redirect("/maintenance");
   }
   return (
-    <section>
+    <>
       {impersonated && <ImpersonationBanner targetName={impersonated.name} />}
-      <RoleNav
+      <SidebarShell
         tone="light"
         items={[
-          { href: "/parent/dashboard", label: "Dashboard" },
-          { href: "/parent/children", label: "Children" },
-          { href: "/parent/settings/notifications", label: "Notifications" },
-          { href: "/parent/settings/account", label: "Account" },
+          { href: "/parent/dashboard", icon: "home", label: "Dashboard" },
+          { href: "/parent/children", icon: "users", label: "Children" },
+          // Upgrade entry hidden while billing is off (free build).
+          ...(billingEnabled() ? [{ href: "/parent/upgrade", icon: "spark", label: "QuizSpark Plus" }] : []),
+          { href: "/parent/notifications", icon: "bell", label: "Notifications" },
+          { href: "/parent/settings/account", icon: "settings", label: "Account" },
         ]}
         trailing={
           <Link
             href="/auth/logout"
-            className="rounded-md px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+            className="block rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
           >
             Log out
           </Link>
         }
-      />
-      {children}
-    </section>
+      >
+        {children}
+      </SidebarShell>
+    </>
   );
 }

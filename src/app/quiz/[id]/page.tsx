@@ -23,6 +23,10 @@ export default async function QuizPage({
   });
   if (!quiz) notFound();
 
+  // Proctored "test" quizzes hide per-answer correctness/explanations until
+  // the results page; "practice" reveals feedback inline after submit.
+  const quizMode: "practice" | "test" = quiz.mode === "test" ? "test" : "practice";
+
   if (quiz.status === "completed") {
     redirect(`/quiz/${quizId}/results${Number.isFinite(studentId) ? `?studentId=${studentId}` : ""}`);
   }
@@ -45,7 +49,7 @@ export default async function QuizPage({
     <main className="space-y-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Quiz #{quiz.id}</h1>
+          <h1 className="font-display text-4xl leading-tight tracking-tight text-slate-900 dark:text-slate-100">Quiz #{quiz.id}</h1>
           <p className="text-sm text-slate-600 dark:text-slate-400">
             {questions.length} questions · difficulty {quiz.difficulty}
           </p>
@@ -56,6 +60,7 @@ export default async function QuizPage({
         quizId={quiz.id}
         studentId={Number.isFinite(studentId) ? studentId : null}
         questions={questions}
+        mode={quizMode}
       />
     </main>
   );
