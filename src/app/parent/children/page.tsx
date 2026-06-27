@@ -53,13 +53,13 @@ export default async function ChildrenListPage() {
           </p>
         </div>
         <Link href="/onboarding" className="cm-btn primary">
-          <CMIcon name="plus" size={16} color="#fff" /> Add child
+          <CMIcon name="plus" size={16} color="#fff" /> Add student
         </Link>
       </div>
 
       {rows.length === 0 ? (
         <p className="rounded-[18px] border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
-          Click <span className="font-semibold">Add child</span> to onboard your first student.
+          Click <span className="font-semibold">Add student</span> to onboard your first student.
         </p>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">

@@ -139,11 +139,11 @@ export default async function ParentDashboardPage() {
         </div>
       </section>
 
-      {/* Kids */}
-      <h3 className="text-sm font-bold text-slate-700">YOUR KIDS</h3>
+      {/* Students */}
+      <h3 className="text-sm font-bold text-slate-700">YOUR STUDENTS</h3>
       {kid.length === 0 ? (
         <p className="rounded-[18px] border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">
-          No children yet. <Link href="/onboarding" className="font-semibold text-cm-blue">Add a child</Link> to begin.
+          No students yet. <Link href="/onboarding" className="font-semibold text-cm-blue">Add a student</Link> to begin.
         </p>
       ) : (
         kid.map((c) => (
@@ -194,7 +194,7 @@ export default async function ParentDashboardPage() {
       )}
 
       <Link href="/onboarding" className="cm-btn primary w-full justify-center">
-        <CMIcon name="plus" size={16} color="#fff" /> Add a child
+        <CMIcon name="plus" size={16} color="#fff" /> Add a student
       </Link>
     </main>
   );

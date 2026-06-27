@@ -5,6 +5,7 @@ import { loadImpersonatedUser } from "@/lib/impersonation";
 import ImpersonationBanner from "@/components/ImpersonationBanner";
 import { isMaintenanceModeOn } from "@/lib/maintenance";
 import { billingEnabled } from "@/lib/plan";
+import CMIcon from "@/components/CMIcon";
 
 // Parent app — left-sidebar shell from the design bundle (parent.jsx):
 // white sidebar, steel-blue active pills, Logout pinned at the foot.
@@ -26,6 +27,15 @@ export default async function ParentLayout({ children }: { children: React.React
           { href: "/parent/notifications", icon: "bell", label: "Notifications" },
           { href: "/parent/settings/account", icon: "settings", label: "Account" },
         ]}
+        topActions={
+          <Link
+            href="/parent/notifications"
+            aria-label="Notifications"
+            className="grid h-9 w-9 place-items-center rounded-full text-slate-600 transition-colors hover:bg-slate-100"
+          >
+            <CMIcon name="bell" size={18} color="currentColor" />
+          </Link>
+        }
         trailing={
           <Link
             href="/auth/logout"

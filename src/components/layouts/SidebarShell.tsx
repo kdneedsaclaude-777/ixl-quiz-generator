@@ -18,6 +18,7 @@ export default function SidebarShell({
   eyebrow,
   orgChip,
   trailing,
+  topActions,
   children,
 }: {
   tone?: "light" | "dark";
@@ -26,6 +27,7 @@ export default function SidebarShell({
   eyebrow?: string;
   orgChip?: { initials: string; name: string };
   trailing?: React.ReactNode;
+  topActions?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const pathname = usePathname() ?? "";
@@ -116,14 +118,15 @@ export default function SidebarShell({
       </aside>
 
       <div className="flex flex-col">
-        {/* Desktop top bar — right-aligned log out */}
+        {/* Desktop top bar — right-aligned actions + log out */}
         <div
-          className="hidden items-center justify-end px-7 py-2.5 md:flex"
+          className="hidden items-center justify-end gap-2 px-7 py-2.5 md:flex"
           style={{
             background: dark ? "var(--shell-card)" : "#fff",
             borderBottom: `1px solid ${dark ? "var(--shell-border)" : "var(--slate-200)"}`,
           }}
         >
+          {topActions}
           {trailing}
         </div>
 
@@ -136,7 +139,10 @@ export default function SidebarShell({
           }}
         >
           {dark ? <span className="font-extrabold text-white">QuizSpark</span> : <Logo size={22} />}
-          {trailing}
+          <div className="flex items-center gap-2">
+            {topActions}
+            {trailing}
+          </div>
         </div>
 
         {/* Mobile tab strip */}
