@@ -38,7 +38,16 @@ type Student = {
 type Mode = "practice" | "test";
 
 const QUESTION_CHIPS = [5, 10, 15, 20, 25] as const;
-const DIFFICULTY_LABELS = ["Recall", "Understand", "Apply", "Analyze", "Exam"] as const;
+// Three friendly levels mapped onto the engine's 1–5 difficulty scale.
+const DIFFICULTY_LEVELS = [
+  { value: 1, label: "Easy" },
+  { value: 3, label: "Medium" },
+  { value: 5, label: "Hard" },
+] as const;
+// Snap the student's current (1–5) difficulty to the nearest of the 3 levels.
+function snapDifficulty(d: number): number {
+  return d <= 2 ? 1 : d <= 4 ? 3 : 5;
+}
 
 export default function QuizBuilder({
   student,
@@ -61,9 +70,7 @@ export default function QuizBuilder({
     () => new Set(defaultSelectedIds),
   );
   const [questionCount, setQuestionCount] = useState<number>(10);
-  const [difficulty, setDifficulty] = useState<number>(
-    Math.min(5, Math.max(1, defaultDifficulty)),
-  );
+  const [difficulty, setDifficulty] = useState<number>(snapDifficulty(defaultDifficulty));
   const [mode, setMode] = useState<Mode>("practice");
 
   const [preview, setPreview] = useState<Preview>(initialPreview);
@@ -252,7 +259,7 @@ export default function QuizBuilder({
                     </div>
                     <div className="mt-2 text-xs font-bold leading-tight text-slate-900">{g.name}</div>
                     <div className="mt-0.5 text-[10px] text-slate-500">
-                      {g.skillCount} skills · {g.weakCount} weak
+                      {g.skillCount} skills{g.weakCount > 0 ? ` · ${g.weakCount} weak` : ""}
                     </div>
                   </button>
                 );
@@ -307,38 +314,32 @@ export default function QuizBuilder({
           {/* (d) Difficulty */}
           <section className="cm-card p-4">
             <div className="cm-label">Difficulty</div>
-            <div role="radiogroup" aria-label="Difficulty" className="grid grid-cols-5 gap-1.5">
-              {DIFFICULTY_LABELS.map((label, i) => {
-                const lvl = i + 1;
-                const on = difficulty === lvl;
+            <div role="radiogroup" aria-label="Difficulty" className="grid grid-cols-3 gap-1.5">
+              {DIFFICULTY_LEVELS.map(({ value, label }) => {
+                const on = difficulty === value;
                 return (
                   <button
                     key={label}
                     type="button"
                     role="radio"
                     aria-checked={on}
-                    aria-label={`Level ${lvl}, ${label}`}
-                    onClick={() => setDifficulty(lvl)}
-                    className="rounded-xl px-1 py-2 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                    aria-label={label}
+                    onClick={() => setDifficulty(value)}
+                    className="rounded-xl px-1 py-2.5 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
                     style={{
                       background: on ? "var(--cm-blue)" : "#fff",
                       color: on ? "#fff" : "var(--ink)",
                       border: on ? "none" : "1px solid var(--slate-200)",
                     }}
                   >
-                    <div className="text-base font-extrabold">{lvl}</div>
-                    <div className="text-[9px] font-semibold opacity-80">{label}</div>
+                    <div className="text-sm font-extrabold">{label}</div>
                   </button>
                 );
               })}
             </div>
             <div className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-500">
               <CMIcon name="target" size={12} color="var(--slate-400)" />
-              {difficulty === student.currentDifficulty ? (
-                <span><strong>Adaptive on</strong> — engine adjusts as {student.name} answers.</span>
-              ) : (
-                <span>Fixed at level {difficulty}.</span>
-              )}
+              <span>Higher means tougher questions — the engine keeps adapting as {student.name} answers.</span>
             </div>
           </section>
 

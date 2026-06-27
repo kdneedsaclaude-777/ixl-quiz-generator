@@ -113,11 +113,21 @@ export default function SidebarShell({
           })}
         </nav>
 
-        <div className="mt-auto pt-4">{trailing}</div>
       </aside>
 
-      {/* Mobile top bar (sidebar hidden < md) */}
       <div className="flex flex-col">
+        {/* Desktop top bar — right-aligned log out */}
+        <div
+          className="hidden items-center justify-end px-7 py-2.5 md:flex"
+          style={{
+            background: dark ? "var(--shell-card)" : "#fff",
+            borderBottom: `1px solid ${dark ? "var(--shell-border)" : "var(--slate-200)"}`,
+          }}
+        >
+          {trailing}
+        </div>
+
+        {/* Mobile top bar (sidebar hidden < md) */}
         <div
           className="flex items-center justify-between px-4 py-3 md:hidden"
           style={{

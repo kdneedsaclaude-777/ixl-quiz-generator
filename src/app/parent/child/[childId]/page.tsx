@@ -59,8 +59,9 @@ export default async function ChildDetailPage({
     .sort((a, b) => a.completedAt!.getTime() - b.completedAt!.getTime());
   const last10 = completed.slice(-10);
   const sparkScores = last10.map((q) => Math.round(q.score as number));
-  const avgLast10 = last10.length
-    ? Math.round(last10.reduce((s, q) => s + (q.score as number), 0) / last10.length)
+  // Most recent completed quiz score (shown instead of the running average).
+  const lastScore = completed.length
+    ? Math.round(completed[completed.length - 1].score as number)
     : null;
 
   const weekAgo = new Date();
@@ -124,7 +125,7 @@ export default async function ChildDetailPage({
   };
 
   const kpis = [
-    { l: `Avg score (${last10.length} quiz${last10.length === 1 ? "" : "zes"})`, v: avgLast10 === null ? "—" : `${avgLast10}%`, c: "var(--cm-mint)" },
+    { l: "Last quiz score", v: lastScore === null ? "—" : `${lastScore}%`, c: "var(--cm-mint)" },
     { l: "Quizzes this week", v: String(quizzesThisWeek), c: "var(--cm-blue)" },
     { l: "Current streak", v: streak === 1 ? "1 day" : `${streak} days`, c: "var(--cm-coral)" },
     { l: "Skills mastered", v: `${masteredCount} / ${totalSkills}`, c: "var(--cm-gold)" },
@@ -156,7 +157,7 @@ export default async function ChildDetailPage({
               Lv {level} · {rank.title}
             </span>
             <span aria-hidden>·</span>
-            <span>Difficulty {student.currentDifficulty}</span>
+            <span>Difficulty: {student.currentDifficulty <= 2 ? "Easy" : student.currentDifficulty <= 4 ? "Medium" : "Hard"}</span>
             <span aria-hidden>·</span>
             <span>{student.topicSelections.length} topic group{student.topicSelections.length === 1 ? "" : "s"}</span>
           </div>
