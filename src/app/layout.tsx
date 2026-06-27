@@ -101,6 +101,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <span>© {new Date().getFullYear()} Concept Mastery</span>
                   <Link href="/privacy" className="hover:text-slate-600 dark:hover:text-slate-300">Privacy</Link>
                   <Link href="/terms" className="hover:text-slate-600 dark:hover:text-slate-300">Terms</Link>
+                  <Link href="/delete-account" className="hover:text-slate-600 dark:hover:text-slate-300">Delete account</Link>
                   <a href="mailto:admin@conceptmastery.ca" className="hover:text-slate-600 dark:hover:text-slate-300">Contact</a>
                 </div>
               </footer>
