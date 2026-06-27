@@ -40,8 +40,8 @@ export const metadata: Metadata = {
   description: "Adaptive math quizzes for Grades 1–8, by Concept Mastery.",
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
-    apple: [{ url: "/icon.svg" }],
+    icon: [{ url: "/icon-512.png", type: "image/png" }],
+    apple: [{ url: "/icon-512.png" }],
   },
   appleWebApp: { capable: true, statusBarStyle: "default", title: "QuizSpark" },
 };
