@@ -153,13 +153,13 @@ wrapper around the **live** site — finish Phase A first.
      "relation": ["delegate_permission/common.handle_all_urls"],
      "target": {
        "namespace": "android_app",
-       "package_name": "ca.conceptmastery.quizspark",
+       "package_name": "com.conceptmastery.quizspark",
        "sha256_cert_fingerprints": ["<FROM PWABUILDER / PLAY APP SIGNING>"]
      }
    }]
    ```
    (Hand the developer the fingerprint; they'll commit this file.)
-4. Play Console → create app → package name `ca.conceptmastery.quizspark` →
+4. Play Console → create app → package name `com.conceptmastery.quizspark` →
    upload the `.aab` → fill the listing from
    [`docs/PLAY_STORE_LISTING.md`](docs/PLAY_STORE_LISTING.md) (copy, Data Safety,
    content rating) → paste the privacy URL `https://YOUR_DOMAIN/privacy`.

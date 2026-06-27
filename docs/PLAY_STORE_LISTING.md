@@ -8,9 +8,9 @@ adjust anything that doesn't match final practices.
 
 ## App identity
 - **App name:** QuizSpark
-- **Package name:** `ca.conceptmastery.quizspark`
+- **Package name:** `com.conceptmastery.quizspark`
 - **Developer:** Concept Mastery
-- **Default language:** English (Canada)
+- **Default language:** English (Canada) 
 - **Category:** Education
 - **Tags:** education, math, kids, practice, quizzes
 - **Contact email:** admin@conceptmastery.ca
