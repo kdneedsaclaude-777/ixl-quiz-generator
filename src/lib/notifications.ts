@@ -348,6 +348,31 @@ export async function notifyEmailChanged(args: {
   });
 }
 
+// Profile-lock PIN — emailed to the parent when they set or resend it. Never
+// deduped (a resend must always deliver). The PIN is in clear here because it
+// goes to the parent's inbox, not the shared device.
+export async function notifyProfilePin(args: {
+  to: string;
+  name: string;
+  pin: string;
+}): Promise<void> {
+  await notifySecurity({
+    to: args.to,
+    subject: "Your QuizSpark profile PIN",
+    payload: {
+      preheader: "Use this PIN to switch profiles or return to the parent app.",
+      heading: "Your profile lock PIN",
+      body: [
+        `Aloha ${args.name},`,
+        `Here's your QuizSpark profile-lock PIN. Enter it to switch a child's profile or return to the parent app on a shared device.`,
+      ],
+      items: [`PIN: ${args.pin}`],
+      footnote:
+        "Keep this private — anyone with the PIN can leave a child's profile. You can change or remove it anytime in your account settings.",
+    },
+  });
+}
+
 function roleLabel(role: string): string {
   switch (role) {
     case "parent": return "parent";

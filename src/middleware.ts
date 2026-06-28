@@ -32,6 +32,23 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     return passthrough(req);
   }
 
+  // Profile lock: while a PIN-locked child session is active (cookie set when a
+  // parent with a PIN picks a child), block the parent app and profile-switching
+  // — even by typing the URL — until the PIN is entered at /child/unlock.
+  if (req.cookies.get("child-lock")?.value === "1") {
+    const locked =
+      pathname === "/parent" ||
+      pathname.startsWith("/parent/") ||
+      pathname === "/child/select" ||
+      pathname.startsWith("/child/select/");
+    if (locked) {
+      const url = req.nextUrl.clone();
+      url.pathname = "/child/unlock";
+      url.search = `?next=${encodeURIComponent(pathname)}`;
+      return NextResponse.redirect(url);
+    }
+  }
+
   const needsParent = isPrefixed(pathname, PROTECTED_PARENT);
   const needsAdmin = isPrefixed(pathname, PROTECTED_ADMIN);
   const needsTutor = isPrefixed(pathname, PROTECTED_TUTOR);

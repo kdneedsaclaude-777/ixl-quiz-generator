@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import type { ParentSession } from "@/lib/auth/server";
 
 const COOKIE_NAME = "active-child";
+const LOCK_COOKIE = "child-lock"; // "1" while a PIN-locked child session is active
 const MAX_AGE = 60 * 60 * 8; // 8 hours, refreshed on each selection
 
 type ResolvedStudent = {
@@ -82,4 +83,22 @@ export async function setActiveChildCookie(childId: number): Promise<void> {
 export async function clearActiveChildCookie(): Promise<void> {
   const jar = await cookies();
   jar.delete(COOKIE_NAME);
+}
+
+// Lock cookie — set only when the parent has a profile-lock PIN. Middleware
+// reads it (cookie-only, no DB) to gate /parent/* and profile switching behind
+// the PIN. Cleared once the correct PIN is entered (or child mode is exited).
+export async function setChildLockCookie(): Promise<void> {
+  const jar = await cookies();
+  jar.set(LOCK_COOKIE, "1", { httpOnly: true, sameSite: "lax", path: "/", maxAge: MAX_AGE });
+}
+
+export async function clearChildLockCookie(): Promise<void> {
+  const jar = await cookies();
+  jar.delete(LOCK_COOKIE);
+}
+
+export async function isChildLocked(): Promise<boolean> {
+  const jar = await cookies();
+  return jar.get(LOCK_COOKIE)?.value === "1";
 }

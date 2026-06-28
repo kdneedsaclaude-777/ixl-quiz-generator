@@ -4,6 +4,7 @@ import ProfileForm from "./ProfileForm";
 import PasswordForm from "./PasswordForm";
 import DeleteAccountForm from "./DeleteAccountForm";
 import PhoneForm from "./PhoneForm";
+import ProfileLock from "./ProfileLock";
 
 export const metadata = { title: "Account settings" };
 
@@ -18,6 +19,7 @@ export default async function AccountPage() {
       emailVerified: true,
       phone: true,
       phoneVerified: true,
+      profileLockPin: true,
     },
   });
   if (!user) return null;
@@ -42,6 +44,8 @@ export default async function AccountPage() {
       />
 
       <PasswordForm />
+
+      <ProfileLock locked={Boolean(user.profileLockPin)} />
 
       <DeleteAccountForm />
     </main>

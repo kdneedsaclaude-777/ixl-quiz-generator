@@ -55,6 +55,11 @@ model User {
   subscriptionStatus   String?               // Stripe sub status (active, canceled, past_due…)
   currentPeriodEnd     DateTime?             // paid access valid through this
 
+  // Parental profile-lock: a 4-digit PIN (bcrypt-hashed) the parent sets so a
+  // kid on a shared device can't switch profiles or reach the parent app.
+  // Null = no lock. Emailed to the parent when set/resent.
+  profileLockPin       String?
+
   students             Student[]             @relation("ParentStudents")
   studentProfile       Student?              @relation("StudentAccount")
   tutorAssignments     TutorAssignment[]     @relation("TutorLink")
