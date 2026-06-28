@@ -6,7 +6,7 @@ const PROTECTED_PARENT = ["/parent", "/onboarding", "/dashboard", "/quiz"];
 const PROTECTED_ADMIN = ["/admin"];
 const PROTECTED_TUTOR = ["/tutor"];
 const PROTECTED_CHILD = ["/child"];
-const PUBLIC_AUTH = ["/auth/login", "/auth/signup", "/auth/verify-email", "/auth/forgot-password", "/auth/reset-password", "/auth/logout"];
+const PUBLIC_AUTH = ["/auth/login", "/auth/admin", "/auth/signup", "/auth/verify-email", "/auth/forgot-password", "/auth/reset-password", "/auth/logout"];
 
 function isPrefixed(pathname: string, prefixes: string[]): boolean {
   return prefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`));

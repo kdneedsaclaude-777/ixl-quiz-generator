@@ -2,14 +2,25 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 
-export default function LoginForm() {
+export default function LoginForm({ secretAdminTrigger = false }: { secretAdminTrigger?: boolean }) {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Hidden admin entry: typing the access code in the email field reveals the
+  // admin / super-admin sign-in page. (Obscurity only — credentials still gate it.)
+  function onEmailChange(v: string) {
+    setEmail(v);
+    if (secretAdminTrigger && v.trim().toUpperCase() === "ADMIN-01") {
+      router.push("/auth/admin");
+    }
+  }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -39,7 +50,7 @@ export default function LoginForm() {
           autoComplete="email"
           placeholder="Enter your email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => onEmailChange(e.target.value)}
           required
           className={inputCls}
         />

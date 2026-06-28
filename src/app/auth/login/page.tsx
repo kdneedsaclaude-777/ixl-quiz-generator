@@ -16,7 +16,7 @@ export default function LoginPage() {
         </span>
       }
     >
-      <LoginForm />
+      <LoginForm secretAdminTrigger />
     </AuthCard>
   );
 }
