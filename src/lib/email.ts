@@ -16,6 +16,20 @@ function resendConfigured(): boolean {
   return Boolean(process.env.RESEND_API_KEY);
 }
 
+// Provider preference. Default (unset) = "auto": Resend if a key is set, else
+// SMTP. Set EMAIL_PROVIDER=smtp (or "gmail") to MUTE Resend and force SMTP/Gmail
+// even when a Resend key is still present — a clean, reversible switch (no need
+// to delete RESEND_API_KEY).
+function preferSmtp(): boolean {
+  const p = (process.env.EMAIL_PROVIDER ?? "").toLowerCase();
+  return p === "smtp" || p === "gmail";
+}
+
+// True when Resend should actually be used for sending.
+function useResend(): boolean {
+  return resendConfigured() && !preferSmtp();
+}
+
 // Resend has a tiny REST API, so we hit it with fetch rather than adding a
 // dependency. Throws on a non-2xx so sendEmail's catch logs the body and
 // still surfaces the link in the console.
@@ -85,6 +99,7 @@ async function getTransporter(): Promise<Transporter> {
 // (e.g. surfacing a verification link in the UI) gate on it and never leak
 // once real email works.
 export function isRealEmailConfigured(): boolean {
+  if (preferSmtp()) return realSmtpConfigured();
   return resendConfigured() || realSmtpConfigured();
 }
 
@@ -93,8 +108,8 @@ type SendResult = { previewUrl: string | null };
 
 export async function sendEmail({ to, subject, text, html }: SendArgs): Promise<SendResult> {
   try {
-    // Preferred real channel in dev/demo: Resend (free, lands in real inboxes).
-    if (resendConfigured()) {
+    // Resend unless it's been muted via EMAIL_PROVIDER=smtp/gmail.
+    if (useResend()) {
       await sendViaResend({ to, subject, text, html });
       return { previewUrl: null };
     }
