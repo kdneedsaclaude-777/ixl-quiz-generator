@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireParentSession } from "@/lib/auth/server";
-import { studentEmoji } from "@/lib/student-emoji";
+import { avatarFor } from "@/lib/student-emoji";
 import { calculateStreak, xpToLevel, levelTitle, LEVEL_TIER_PILL } from "@/lib/domain/gamification";
 import Spark from "@/components/Spark";
 import CMIcon from "@/components/CMIcon";
@@ -163,7 +163,7 @@ export default async function ChildDetailPage({
           className="grid h-[72px] w-[72px] place-items-center rounded-[22px] bg-white text-[40px]"
           style={{ border: "2px solid var(--cm-coral)" }}
         >
-          {studentEmoji(student.id)}
+          {avatarFor(student)}
         </div>
         <div className="min-w-0 flex-1">
           <h1 className="font-display text-[34px] leading-none text-slate-900">{student.name}</h1>

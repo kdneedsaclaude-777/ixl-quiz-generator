@@ -160,6 +160,7 @@ model Student {
   id                Int                      @id @default(autoincrement())
   name              String
   grade             Int
+  avatar            String?                  // kid-chosen emoji avatar; falls back to a derived one
   currentDifficulty Int                      @default(1)
   tutorApproved     Boolean                  @default(true)
   orgId             String?

@@ -6,7 +6,7 @@ import { levelTitle } from "@/lib/domain/gamification";
 import { loadChildWeeklyLeaderboard, isLeaderboardEnabled } from "@/lib/leaderboard";
 import { isStudentPaid } from "@/lib/plan";
 import { loadPracticeDecision } from "@/lib/parental";
-import { studentEmoji } from "@/lib/student-emoji";
+import { avatarFor } from "@/lib/student-emoji";
 import { parseSkillIds } from "@/lib/domain/homework";
 import { BADGE_BY_CODE, BADGE_CATALOG } from "@/lib/domain/badge-catalog";
 import { formatClock } from "@/lib/domain/test-mode";
@@ -85,7 +85,7 @@ export default async function ChildHomePage() {
 
   const xpPct = Math.min(100, Math.round((stats.currentLevelXp / stats.nextLevelXp) * 100));
   const xpToGo = Math.max(0, stats.nextLevelXp - stats.currentLevelXp);
-  const emoji = studentEmoji(child.id);
+  const emoji = avatarFor(child);
   const recentBadges = stats.badges.slice(0, 4);
   // Badge progress + the next one to chase (catalog order).
   const earnedCodes = new Set(stats.badges.map((b) => b.code));

@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { resolveActiveStudent } from "@/lib/active-child";
-import { studentEmoji } from "@/lib/student-emoji";
+import { avatarFor, AVATAR_CHOICES } from "@/lib/student-emoji";
 import CMIcon from "@/components/CMIcon";
+import { setAvatar } from "./actions";
 import PhoneForm from "@/app/parent/settings/account/PhoneForm";
 
 export const metadata = { title: "Me — QuizSpark" };
@@ -22,7 +23,7 @@ export default async function ChildAccountPage() {
       })
     : null;
   const user = account?.account;
-  const emoji = studentEmoji(child.id);
+  const emoji = avatarFor(child);
 
   return (
     <main className="space-y-5">
@@ -51,6 +52,33 @@ export default async function ChildAccountPage() {
           </div>
         </div>
       </header>
+
+      {/* ── Avatar picker ── */}
+      <section className="cm-card p-5">
+        <h2 className="text-sm font-bold text-slate-700">PICK YOUR AVATAR</h2>
+        <div className="mt-3 grid grid-cols-6 gap-2">
+          {AVATAR_CHOICES.map((a) => {
+            const on = emoji === a;
+            return (
+              <form key={a} action={setAvatar}>
+                <input type="hidden" name="avatar" value={a} />
+                <button
+                  type="submit"
+                  aria-label={`Choose ${a}`}
+                  aria-pressed={on}
+                  className="grid aspect-square w-full place-items-center rounded-2xl text-2xl transition"
+                  style={{
+                    background: on ? "var(--cm-coral-soft)" : "var(--slate-100)",
+                    border: on ? "2px solid var(--cm-coral)" : "2px solid transparent",
+                  }}
+                >
+                  {a}
+                </button>
+              </form>
+            );
+          })}
+        </div>
+      </section>
 
       {/* ── Phone setting row ── */}
       <section className="cm-card p-5">

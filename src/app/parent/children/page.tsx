@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireParentSession } from "@/lib/auth/server";
-import { studentEmoji } from "@/lib/student-emoji";
+import { avatarFor } from "@/lib/student-emoji";
 import CMIcon from "@/components/CMIcon";
 
 export const metadata = { title: "Children — QuizSpark" };
@@ -32,6 +32,7 @@ export default async function ChildrenListPage() {
     const lastQuiz = c.quizzes[0];
     return {
       id: c.id,
+      avatar: c.avatar,
       name: c.name,
       grade: c.grade,
       topicGroupCount: c.topicSelections.length,
@@ -70,7 +71,7 @@ export default async function ChildrenListPage() {
                   className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-2xl"
                   style={{ border: "2px solid var(--cm-blue)" }}
                 >
-                  {studentEmoji(c.id)}
+                  {avatarFor(c)}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-base font-bold text-slate-900">{c.name}</div>
