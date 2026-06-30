@@ -66,6 +66,7 @@ model User {
   notificationSettings NotificationSettings?
   payments             Payment[]
   notifications        Notification[]
+  pushSubscriptions    PushSubscription[]
   accounts             Account[]
   sessions             Session[]
   passwordResetTokens  PasswordResetToken[]
@@ -418,6 +419,20 @@ model PaywallEvent {
 
 // Lightweight in-app notification feed (currently billing events: a parent is
 // notified the moment their payment lands). Shown in-app + cleared by reading.
+// A browser/device Web Push subscription for a user. One row per device.
+// Pushes are sent server-side via web-push; expired endpoints are pruned.
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
 model Notification {
   id        String    @id @default(cuid())
   userId    String

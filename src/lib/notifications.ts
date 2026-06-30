@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { sendEmail, buildAppUrl } from "@/lib/email";
 import { renderEmail, type EmailPayload } from "@/lib/emailTemplate";
 import { streakAtRisk } from "@/lib/domain/gamification";
+import { sendPushToUser } from "@/lib/push";
 
 // ---------------------------------------------------------------------------
 // Pure decision helpers (unit-tested in isolation — no DB, no mail).
@@ -623,7 +624,14 @@ export async function runScheduledNotifications(
               footnote: "You can turn streak reminders off anytime in your notification settings.",
             },
           });
-          if (sent) streaks++;
+          if (sent) {
+            streaks++;
+            void sendPushToUser(p.id, {
+              title: `🔥 Keep ${stu.name}'s ${atRisk}-day streak`,
+              body: `${stu.name} hasn't practised yet today — one quiz keeps it going.`,
+              url: "/parent/dashboard",
+            });
+          }
         }
       }
     }

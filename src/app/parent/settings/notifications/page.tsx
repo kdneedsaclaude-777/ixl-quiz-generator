@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { requireParentSession } from "@/lib/auth/server";
 import NotificationsForm from "./NotificationsForm";
+import PushToggle from "./PushToggle";
 
 export const metadata = { title: "Notification settings" };
 
@@ -30,6 +31,7 @@ export default async function NotificationsPage() {
           streakReminder: settings.streakReminder,
         }}
       />
+      <PushToggle />
     </main>
   );
 }

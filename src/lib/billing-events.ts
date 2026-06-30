@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { notifyPlusWelcome } from "@/lib/notifications";
 import { logPaywallEvent } from "@/lib/plan";
+import { sendPushToUser } from "@/lib/push";
 
 function formatMoney(amountMinor: number, currency: string): string {
   try {
@@ -66,6 +67,13 @@ export async function recordPaymentSuccess(args: {
       },
     })
     .catch((err) => console.error("[billing] notification create failed", err));
+
+  // Phone push to match the in-app notification.
+  void sendPushToUser(args.userId, {
+    title: "You're on QuizSpark Plus 🎉",
+    body: `Your ${money} payment went through — everything's unlocked.`,
+    url: "/parent/upgrade",
+  });
 
   // Funnel: a real conversion.
   void logPaywallEvent(args.userId, "upgraded");
