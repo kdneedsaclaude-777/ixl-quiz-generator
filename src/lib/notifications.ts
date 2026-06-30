@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { sendEmail, buildAppUrl } from "@/lib/email";
 import { renderEmail, type EmailPayload } from "@/lib/emailTemplate";
-import { streakAtRisk } from "@/lib/domain/gamification";
+import { streakAtRisk, calculateStreak } from "@/lib/domain/gamification";
 import { sendPushToUser } from "@/lib/push";
 
 // ---------------------------------------------------------------------------
@@ -551,9 +551,17 @@ export async function runScheduledNotifications(
         const avg = wk.length
           ? Math.round(wk.reduce((a, q) => a + (q.score ?? 0), 0) / wk.length)
           : null;
-        return `${stu.name}: ${wk.length} quiz(zes) this week${
+        const streak = calculateStreak(
+          stu.quizzes.map((q) => q.completedAt).filter((d): d is Date => d != null),
+          now,
+        );
+        if (wk.length === 0) {
+          return `${stu.name}: no practice this week — a quick session keeps the habit going.`;
+        }
+        const streakBit = streak > 0 ? ` · 🔥 ${streak}-day streak` : "";
+        return `${stu.name}: ${wk.length} quiz${wk.length === 1 ? "" : "zes"} this week${
           avg !== null ? `, avg ${avg}%` : ""
-        }`;
+        }${streakBit}`;
       });
       const noun = p.students.length === 1 ? "child" : "children";
       const sent = await sendOnce({

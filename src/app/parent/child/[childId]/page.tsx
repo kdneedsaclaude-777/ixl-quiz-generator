@@ -96,6 +96,20 @@ export default async function ChildDetailPage({
     .sort((a, b) => a.pct - b.pct)
     .slice(0, 4);
 
+  // Topic-group mastery heatmap — accuracy aggregated per topic group.
+  const tgMap = new Map<string, { letter: string; name: string; attempts: number; correct: number }>();
+  for (const m of student.conceptMastery) {
+    if (m.totalAttempts < 1) continue;
+    const k = m.skill.topicGroup.letter;
+    const cur = tgMap.get(k) ?? { letter: k, name: m.skill.topicGroup.name, attempts: 0, correct: 0 };
+    cur.attempts += m.totalAttempts;
+    cur.correct += m.totalCorrect;
+    tgMap.set(k, cur);
+  }
+  const masteryTiles = [...tgMap.values()]
+    .map((t) => ({ letter: t.letter, name: t.name, pct: Math.round((t.correct / t.attempts) * 100) }))
+    .sort((a, b) => a.letter.localeCompare(b.letter));
+
   // ── Quiz history (compact rows, design-matched) ───────────────────────
   const fmtDate = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   const diffLabel = (d: number) => (d <= 2 ? "Easy" : d <= 4 ? "Medium" : "Hard");
@@ -220,6 +234,33 @@ export default async function ChildDetailPage({
           )}
         </div>
       </div>
+
+      {/* topic mastery heatmap */}
+      {masteryTiles.length > 0 && (
+        <div className="cm-card p-[18px]">
+          <h3 className="mb-3 text-[15px] font-bold text-slate-900">Topic mastery</h3>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+            {masteryTiles.map((t) => {
+              const bg = t.pct >= 80 ? "var(--cm-mint-soft)" : t.pct >= 60 ? "var(--cm-gold-soft)" : "var(--cm-red-soft)";
+              const fg = t.pct >= 80 ? "#047857" : t.pct >= 60 ? "#92400E" : "#B43326";
+              return (
+                <div key={t.letter} className="rounded-xl p-3" style={{ background: bg }}>
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-[11px] font-extrabold" style={{ color: fg }}>{t.letter}</span>
+                    <span className="font-display text-lg leading-none" style={{ color: fg }}>{t.pct}%</span>
+                  </div>
+                  <div className="mt-1 truncate text-[11px] font-medium text-slate-600" title={t.name}>{t.name}</div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-3 flex flex-wrap gap-3 text-[11px] text-slate-500">
+            <span><span className="mr-1 inline-block h-2.5 w-2.5 rounded-sm align-middle" style={{ background: "var(--cm-mint)" }} />Strong ≥80%</span>
+            <span><span className="mr-1 inline-block h-2.5 w-2.5 rounded-sm align-middle" style={{ background: "var(--cm-gold)" }} />Getting there 60–79%</span>
+            <span><span className="mr-1 inline-block h-2.5 w-2.5 rounded-sm align-middle" style={{ background: "var(--cm-red)" }} />Needs work &lt;60%</span>
+          </div>
+        </div>
+      )}
 
       {/* quiz history + parental controls */}
       <div className="grid gap-3.5 lg:grid-cols-[1.6fr_1fr]">
