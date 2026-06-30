@@ -93,6 +93,15 @@ export default async function ChildHomePage() {
   const badgeEarned = BADGE_CATALOG.filter((b) => earnedCodes.has(b.code)).length;
   const nextBadge = BADGE_CATALOG.find((b) => !earnedCodes.has(b.code)) ?? null;
   const badgePct = Math.round((badgeEarned / badgeTotal) * 100);
+  // Daily goal progress — quizzes completed today vs the child's goal.
+  const startToday = new Date();
+  startToday.setHours(0, 0, 0, 0);
+  const doneToday = await prisma.quiz.count({
+    where: { studentId: child.id, status: "completed", completedAt: { gte: startToday } },
+  });
+  const goal = Math.max(1, child.dailyGoal);
+  const goalPct = Math.min(100, Math.round((doneToday / goal) * 100));
+  const goalMet = doneToday >= goal;
 
   // Weekly-XP leaderboard tile — QuizSpark Plus only (feature-flagged; null when
   // the child has no family/cohort with ≥2 members). Free plans see a locked tile.
@@ -135,6 +144,19 @@ export default async function ChildHomePage() {
           <span className="text-[13px] font-extrabold text-slate-900">{stats.streak}</span>
         </div>
       </header>
+
+      {/* ── Daily goal ── */}
+      <section className="cm-card p-4">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-bold text-slate-700">
+            {goalMet ? "🎯 Daily goal complete!" : "Today's goal"}
+          </span>
+          <span className="text-xs font-semibold text-slate-500">{doneToday} / {goal} quizzes</span>
+        </div>
+        <div className="cm-bar mt-2">
+          <i style={{ width: `${goalPct}%`, background: goalMet ? "var(--cm-mint)" : "var(--cm-coral)" }} />
+        </div>
+      </section>
 
       {/* ── XP card (darkened gradient + pure-white labels for WCAG AA) ── */}
       <section

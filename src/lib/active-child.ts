@@ -10,7 +10,7 @@ const LOCK_COOKIE = "child-lock"; // "1" while a PIN-locked child session is act
 const MAX_AGE = 60 * 60 * 8; // 8 hours, refreshed on each selection
 
 type ResolvedStudent = {
-  student: { id: number; name: string; grade: number; currentDifficulty: number; orgId: string | null; avatar: string | null };
+  student: { id: number; name: string; grade: number; currentDifficulty: number; orgId: string | null; avatar: string | null; dailyGoal: number };
   // How the viewer reached this student: their own account, or a parent/admin.
   viaSelfLogin: boolean;
 };
@@ -27,7 +27,7 @@ export async function resolveActiveStudent(): Promise<ResolvedStudent> {
   if (role === "student") {
     const profile = await prisma.student.findFirst({
       where: { userId: session.user.id },
-      select: { id: true, name: true, grade: true, currentDifficulty: true, orgId: true, avatar: true },
+      select: { id: true, name: true, grade: true, currentDifficulty: true, orgId: true, avatar: true, dailyGoal: true },
     });
     if (!profile) redirect("/auth/login");
     return { student: profile, viaSelfLogin: true };
@@ -41,14 +41,14 @@ export async function resolveActiveStudent(): Promise<ResolvedStudent> {
 
   const child = await prisma.student.findUnique({
     where: { id: childId },
-    select: { id: true, name: true, grade: true, currentDifficulty: true, orgId: true, parentId: true, avatar: true },
+    select: { id: true, name: true, grade: true, currentDifficulty: true, orgId: true, parentId: true, avatar: true, dailyGoal: true },
   });
   if (!child) redirect("/child/select");
   if (child.parentId !== session.user.id && role !== "superadmin") redirect("/child/select");
   return {
     student: {
       id: child.id, name: child.name, grade: child.grade,
-      currentDifficulty: child.currentDifficulty, orgId: child.orgId, avatar: child.avatar,
+      currentDifficulty: child.currentDifficulty, orgId: child.orgId, avatar: child.avatar, dailyGoal: child.dailyGoal,
     },
     viaSelfLogin: false,
   };

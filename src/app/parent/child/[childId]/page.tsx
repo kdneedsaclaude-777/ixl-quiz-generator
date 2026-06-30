@@ -10,6 +10,7 @@ import GenerateQuizButton from "@/app/dashboard/GenerateQuizButton";
 import EditTopics, { type TopicGroup } from "@/app/dashboard/EditTopics";
 import ParentalControlsForm from "./ParentalControlsForm";
 import QuizHistory from "./QuizHistory";
+import { setDailyGoal } from "./goalActions";
 import { parseLockedTopicGroupIds } from "@/lib/domain/parental-controls";
 import TutorActivityPanel from "@/components/student/TutorActivityPanel";
 import InviteStudent from "@/components/parent/InviteStudent";
@@ -195,6 +196,34 @@ export default async function ChildDetailPage({
             <div className="font-display mt-1 text-[30px] leading-none" style={{ color: k.c }}>{k.v}</div>
           </div>
         ))}
+      </div>
+
+      {/* daily goal setter */}
+      <div className="cm-card flex flex-wrap items-center justify-between gap-3 p-4">
+        <div>
+          <div className="text-[15px] font-bold text-slate-900">Daily goal</div>
+          <div className="text-xs text-slate-500">Quizzes {student.name} aims to finish each day.</div>
+        </div>
+        <div className="flex gap-1.5">
+          {[1, 2, 3, 4, 5].map((g) => {
+            const on = student.dailyGoal === g;
+            return (
+              <form key={g} action={setDailyGoal}>
+                <input type="hidden" name="childId" value={student.id} />
+                <input type="hidden" name="goal" value={g} />
+                <button
+                  type="submit"
+                  aria-label={`Set daily goal to ${g}`}
+                  aria-pressed={on}
+                  className="grid h-9 w-9 place-items-center rounded-xl text-sm font-bold transition"
+                  style={{ background: on ? "var(--cm-blue)" : "var(--slate-100)", color: on ? "#fff" : "var(--slate-700)" }}
+                >
+                  {g}
+                </button>
+              </form>
+            );
+          })}
+        </div>
       </div>
 
       {/* trend + weak topics */}
