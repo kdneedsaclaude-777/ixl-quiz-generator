@@ -14,6 +14,7 @@ import SessionLog, { type SessionRow } from "@/components/tutor/SessionLog";
 import HomeworkManager, { type HomeworkRow } from "@/components/tutor/HomeworkManager";
 import { parseSkillIds } from "@/lib/domain/homework";
 import ApproveStudentButton from "@/components/tutor/ApproveStudentButton";
+import AssignQuizButton from "@/components/tutor/AssignQuizButton";
 
 export const metadata = { title: "Student progress — Tutor" };
 
@@ -140,7 +141,8 @@ export default async function TutorStudentPage({
                 <span className="text-slate-500">read-only tutor view</span>
               </div>
             </div>
-            <div className="shrink-0">
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <AssignQuizButton studentId={student.id} />
               <ApproveStudentButton studentId={student.id} approved={student.tutorApproved} />
             </div>
           </div>

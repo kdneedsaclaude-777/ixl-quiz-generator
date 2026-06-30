@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { generateQuiz } from "@/lib/ai/provider";
+import { createQuizForStudent } from "@/lib/quiz/create";
 import { getParentForApi } from "@/lib/auth/server";
 import { loadPracticeDecision, loadLockedTopicGroupIds } from "@/lib/parental";
 import { enforceRateLimit } from "@/lib/rate-limit";
@@ -22,8 +22,6 @@ type Body = {
   // the daily_done badge + daily-challenge XP bonus can't be spoofed.
   isDailyChallenge?: boolean;
 };
-
-const DEFAULT_TEST_TIME_LIMIT_SEC = 1200; // 20 minutes
 
 export async function POST(req: Request): Promise<Response> {
   // Generation is the most expensive endpoint (potential model call).
@@ -168,93 +166,24 @@ export async function POST(req: Request): Promise<Response> {
     return NextResponse.json({ error: gate.error, reason: gate.reason, upgrade: true }, { status: gate.status });
   }
 
-  const existingQuizCount = await prisma.quiz.count({ where: { studentId } });
-  const isFirstQuiz = existingQuizCount === 0;
-
-  const result = await generateQuiz({
+  const created = await createQuizForStudent({
     studentId,
+    grade: student.grade,
     questionCount,
-    isFirstQuiz,
     topicGroupIds: resolvedTopicGroupIds,
     difficultyOverride,
+    mode,
+    isDailyChallenge,
+    timeLimitSec: body.timeLimitSec,
   });
-  // Refuse to persist an empty quiz. This happens when every topic group
-  // the parent selected has zero active skills (e.g. admin disabled them
-  // all). Without this guard a 0-question quiz is created and the submit
-  // route crashes downstream in pickFocalSkill (sorted[0] === undefined).
-  if (result.questions.length === 0) {
-    return NextResponse.json(
-      { error: "No questions could be generated. Check that the student has at least one topic group with active skills enabled." },
-      { status: 400 },
-    );
+  if (!created.ok) {
+    return NextResponse.json({ error: created.error }, { status: created.status });
   }
 
-  const codes = result.questions.map((q) => q.skill_code);
-  const skills = await prisma.skill.findMany({
-    where: {
-      code: { in: codes },
-      topicGroup: { gradeLevel: student.grade },
-    },
-    include: { topicGroup: true },
-  });
-  const skillByCode = new Map(skills.map((s) => [s.code, s]));
-
-  const quiz = await prisma.quiz.create({
-    data: {
-      studentId,
-      status: "active",
-      difficulty: result.difficulty,
-      mode,
-      isDailyChallenge,
-      generatedBy: hasOverrides ? "manual" : "adaptive",
-      timeLimitSec:
-        mode === "test"
-          ? typeof body.timeLimitSec === "number" && Number.isFinite(body.timeLimitSec)
-            ? Math.min(3600, Math.max(60, Math.round(body.timeLimitSec)))
-            : DEFAULT_TEST_TIME_LIMIT_SEC
-          : null,
-      paramsJson: hasOverrides
-        ? JSON.stringify({
-            topicGroupIds: resolvedTopicGroupIds ?? null,
-            difficulty: difficultyOverride ?? null,
-            questionCount,
-            mode,
-          })
-        : null,
-      questions: {
-        create: result.questions.map((q, idx) => {
-          const skill = skillByCode.get(q.skill_code);
-          if (!skill) throw new Error(`Unknown skill code ${q.skill_code}`);
-          return {
-            skillId: skill.id,
-            position: idx,
-            difficulty: q.difficulty,
-            questionType: q.question_type,
-            questionStyle: q.question_style,
-            questionText: q.question_text,
-            answerOptionsJson: JSON.stringify(q.answer_options),
-            correctAnswer: q.correct_answer,
-            displayLabel: q.display_label,
-            learningObjective: q.learning_objective,
-            conceptTagsJson: JSON.stringify(q.concept_tags),
-            explanationJson: JSON.stringify(q.explanation),
-            needsVisual: q.needs_visual,
-            visualNote: q.visual_note,
-            visualSvg: q.visual_svg,
-            toneGrade: q.tone_grade,
-            estimatedComplexity: q.estimated_complexity,
-            weakSkillTargeted: q.weak_skill_targeted,
-            remediationFlag: q.remediation_flag,
-          };
-        }),
-      },
-    },
-  });
-
   return NextResponse.json({
-    quizId: quiz.id,
+    quizId: created.quizId,
     reused: false,
-    isFirstQuiz,
-    config: result.config ?? null,
+    isFirstQuiz: created.isFirstQuiz,
+    config: created.config,
   });
 }
