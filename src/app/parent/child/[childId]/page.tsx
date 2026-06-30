@@ -9,6 +9,7 @@ import CMIcon from "@/components/CMIcon";
 import GenerateQuizButton from "@/app/dashboard/GenerateQuizButton";
 import EditTopics, { type TopicGroup } from "@/app/dashboard/EditTopics";
 import ParentalControlsForm from "./ParentalControlsForm";
+import QuizHistory from "./QuizHistory";
 import { parseLockedTopicGroupIds } from "@/lib/domain/parental-controls";
 import TutorActivityPanel from "@/components/student/TutorActivityPanel";
 import InviteStudent from "@/components/parent/InviteStudent";
@@ -97,7 +98,8 @@ export default async function ChildDetailPage({
 
   // ── Quiz history (compact rows, design-matched) ───────────────────────
   const fmtDate = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  const historyView = student.quizzes.slice(0, 6).map((q) => {
+  const diffLabel = (d: number) => (d <= 2 ? "Easy" : d <= 4 ? "Medium" : "Hard");
+  const historyView = student.quizzes.slice(0, 40).map((q) => {
     // Title from the dominant topic group across the quiz's questions.
     const counts = new Map<string, number>();
     for (const qq of q.questions) {
@@ -108,9 +110,10 @@ export default async function ChildDetailPage({
     return {
       id: q.id,
       date: fmtDate(q.completedAt ?? q.createdAt),
+      topic: topTopic ?? "Practice",
       title: topTopic ? `${topTopic} quiz` : "Practice quiz",
       questionCount: q.questions.length,
-      difficulty: q.difficulty,
+      difficultyLabel: diffLabel(q.difficulty),
       status: q.status,
       score: typeof q.score === "number" ? Math.round(q.score) : null,
     };
@@ -220,54 +223,7 @@ export default async function ChildDetailPage({
 
       {/* quiz history + parental controls */}
       <div className="grid gap-3.5 lg:grid-cols-[1.6fr_1fr]">
-        <div className="cm-card p-[18px]">
-          <h3 className="mb-3 text-[15px] font-bold text-slate-900">Quiz history</h3>
-          {historyView.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-400">No quizzes yet.</p>
-          ) : (
-            <div>
-              {historyView.map((r, i) => {
-                const done = r.status === "completed";
-                return (
-                  <div
-                    key={r.id}
-                    className="grid items-center gap-2.5 py-2.5"
-                    style={{ gridTemplateColumns: "56px 1fr 96px 64px 56px", borderTop: i === 0 ? "none" : "1px solid var(--slate-100)" }}
-                  >
-                    <div className="text-xs font-semibold text-slate-500">{r.date}</div>
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-slate-900">{r.title}</div>
-                      <div className="text-[11px] text-slate-500">{r.questionCount} questions · Difficulty {r.difficulty}</div>
-                    </div>
-                    <div>
-                      {done ? (
-                        <span className="cm-pill mint" style={{ fontSize: 11 }}>Completed</span>
-                      ) : (
-                        <span className="cm-pill amber" style={{ fontSize: 11 }}>In progress</span>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      {r.score !== null ? (
-                        <span className="font-display text-xl" style={{ color: r.score >= 80 ? "var(--cm-mint)" : "var(--cm-gold)" }}>{r.score}%</span>
-                      ) : (
-                        <span className="text-slate-400">—</span>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <Link
-                        href={done ? `/quiz/${r.id}/results?studentId=${student.id}` : `/quiz/${r.id}?studentId=${student.id}`}
-                        className="text-xs font-semibold"
-                        style={{ color: "var(--cm-blue)" }}
-                      >
-                        {done ? "View" : "Resume"}
-                      </Link>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        <QuizHistory rows={historyView} studentId={student.id} />
 
         <ParentalControlsForm
           studentId={student.id}

@@ -8,7 +8,7 @@ import { isStudentPaid } from "@/lib/plan";
 import { loadPracticeDecision } from "@/lib/parental";
 import { studentEmoji } from "@/lib/student-emoji";
 import { parseSkillIds } from "@/lib/domain/homework";
-import { BADGE_BY_CODE } from "@/lib/domain/badge-catalog";
+import { BADGE_BY_CODE, BADGE_CATALOG } from "@/lib/domain/badge-catalog";
 import { formatClock } from "@/lib/domain/test-mode";
 import CMIcon from "@/components/CMIcon";
 import StartPracticeButton from "./StartPracticeButton";
@@ -87,6 +87,12 @@ export default async function ChildHomePage() {
   const xpToGo = Math.max(0, stats.nextLevelXp - stats.currentLevelXp);
   const emoji = studentEmoji(child.id);
   const recentBadges = stats.badges.slice(0, 4);
+  // Badge progress + the next one to chase (catalog order).
+  const earnedCodes = new Set(stats.badges.map((b) => b.code));
+  const badgeTotal = BADGE_CATALOG.length;
+  const badgeEarned = BADGE_CATALOG.filter((b) => earnedCodes.has(b.code)).length;
+  const nextBadge = BADGE_CATALOG.find((b) => !earnedCodes.has(b.code)) ?? null;
+  const badgePct = Math.round((badgeEarned / badgeTotal) * 100);
 
   // Weekly-XP leaderboard tile — QuizSpark Plus only (feature-flagged; null when
   // the child has no family/cohort with ≥2 members). Free plans see a locked tile.
@@ -326,6 +332,15 @@ export default async function ChildHomePage() {
         <div className="mb-2 flex items-center justify-between">
           <h3 className="text-sm font-bold text-slate-700">RECENT BADGES</h3>
           <Link href="/child/badges" className="text-xs font-semibold text-cm-blue">All badges</Link>
+        </div>
+        <div className="mb-2.5 cm-card p-3">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-bold text-slate-700">{badgeEarned} of {badgeTotal} badges</span>
+            {nextBadge && (
+              <span className="text-slate-500">Next: {nextBadge.icon} {nextBadge.name}</span>
+            )}
+          </div>
+          <div className="cm-bar mt-2"><i style={{ width: `${badgePct}%`, background: "var(--cm-gold)" }} /></div>
         </div>
         {recentBadges.length === 0 ? (
           <p className="cm-card p-4 text-center text-xs text-slate-500">
