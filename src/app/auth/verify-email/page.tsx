@@ -7,9 +7,9 @@ export const metadata = { title: "Verify email — QuizSpark" };
 export default async function VerifyEmailPage({
   searchParams,
 }: {
-  searchParams: Promise<{ token?: string }>;
+  searchParams: Promise<{ token?: string; email?: string }>;
 }) {
-  const { token } = await searchParams;
+  const { token, email } = await searchParams;
   return (
     <AuthCard
       title="Email verification"
@@ -19,7 +19,7 @@ export default async function VerifyEmailPage({
         </span>
       }
     >
-      <VerifyEmailRunner token={token ?? ""} />
+      <VerifyEmailRunner token={token ?? ""} initialEmail={email ?? ""} />
     </AuthCard>
   );
 }

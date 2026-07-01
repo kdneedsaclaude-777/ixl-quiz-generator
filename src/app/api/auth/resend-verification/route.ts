@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { generateToken, verificationExpiry } from "@/lib/tokens";
-import { sendEmail, buildAppUrl } from "@/lib/email";
+import { issueEmailCode } from "@/lib/email-verification";
+import { sendEmail, isRealEmailConfigured } from "@/lib/email";
 import { renderEmail } from "@/lib/emailTemplate";
 import { enforceRateLimit } from "@/lib/rate-limit";
 
@@ -32,23 +32,22 @@ export async function POST(req: Request): Promise<Response> {
     }
   }
 
-  const token = generateToken();
-  await prisma.verificationToken.create({
-    data: { identifier: email, token, expires: verificationExpiry() },
-  });
-  const link = buildAppUrl(`/auth/verify-email?token=${token}`);
+  const code = await issueEmailCode(email);
   const { html, text } = renderEmail({
-    preheader: "A fresh verification link, as requested.",
+    preheader: "A fresh verification code, as requested.",
     heading: "Verify your email",
-    body: "Here's a new link to confirm this email on your QuizSpark account.",
-    cta: { label: "Verify email", url: link },
-    footnote: "The link expires in 24 hours. If you didn't ask for this, you can ignore the email.",
+    body: "Here's a new 6-digit code to confirm this email on your QuizSpark account:",
+    code,
+    footnote: "The code expires in 24 hours. If you didn't ask for this, you can ignore the email.",
   });
-  await sendEmail({
+  const { ok: emailSent, previewUrl } = await sendEmail({
     to: email,
-    subject: "Verify your QuizSpark email",
+    subject: `Your QuizSpark verification code: ${code}`,
     text,
     html,
   });
-  return NextResponse.json({ ok: true });
+  if (!isRealEmailConfigured()) {
+    return NextResponse.json({ ok: true, devCode: code, previewUrl });
+  }
+  return NextResponse.json({ ok: true, emailSent });
 }

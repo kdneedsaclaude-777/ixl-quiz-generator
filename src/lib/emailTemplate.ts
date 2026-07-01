@@ -18,6 +18,9 @@ export type EmailPayload = {
   heading: string;
   // One paragraph or several. Each string becomes its own <p> with a gap.
   body: string | string[];
+  // Optional big, centered, letter-spaced verification code box (e.g. a 6-digit
+  // email code). Rendered between the body paragraphs and the list/CTA.
+  code?: string;
   // Optional bulleted list — used by digests and any "here's a summary" mail.
   items?: string[];
   // Primary call-to-action button. Omit for security notices that shouldn't
@@ -93,6 +96,20 @@ function renderItems(items: string[] | undefined): string {
   return `<ul style="margin:0 0 20px;padding:0 0 0 20px;list-style-type:disc;">${rows}</ul>`;
 }
 
+function renderCode(code: string | undefined): string {
+  if (!code) return "";
+  // Big, tappable-to-select, letter-spaced code box. Monospaced digits on a
+  // tinted card so it reads clearly across clients.
+  return `
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 20px;width:100%;">
+      <tr>
+        <td align="center" style="background:${C.footerBg};border:1px solid ${C.divider};border-radius:10px;padding:18px 24px;">
+          <div style="font-size:34px;font-weight:700;letter-spacing:10px;color:${C.text};font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;">${esc(code)}</div>
+        </td>
+      </tr>
+    </table>`;
+}
+
 function renderCTA(cta: EmailCTA | undefined): string {
   if (!cta) return "";
   // Table-wrapped button — Outlook ignores padding on <a>, so the padding
@@ -145,6 +162,7 @@ export function renderEmail(p: EmailPayload): { html: string; text: string } {
             <td style="padding:28px 32px 24px;">
               <h2 style="margin:0 0 14px;font-size:19px;font-weight:600;line-height:1.35;color:${C.text};font-family:${FONT};">${esc(p.heading)}</h2>
               ${renderParagraphs(p.body)}
+              ${renderCode(p.code)}
               ${renderItems(p.items)}
               ${renderCTA(p.cta)}
               ${renderFootnote(p.footnote)}
@@ -171,6 +189,9 @@ export function renderEmail(p: EmailPayload): { html: string; text: string } {
   const paras = Array.isArray(p.body) ? p.body : [p.body];
   for (const para of paras) {
     lines.push(para, "");
+  }
+  if (p.code) {
+    lines.push(p.code, "");
   }
   if (p.items && p.items.length) {
     for (const it of p.items) lines.push(`- ${it}`);

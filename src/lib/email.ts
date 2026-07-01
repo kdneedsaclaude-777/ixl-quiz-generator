@@ -104,27 +104,32 @@ export function isRealEmailConfigured(): boolean {
 }
 
 type SendArgs = { to: string; subject: string; text: string; html?: string };
-type SendResult = { previewUrl: string | null };
+// `ok` reports whether the message was actually handed off to a delivery
+// channel. It stays false when the send throws (bad SMTP creds, port blocked,
+// Gmail rejects) so callers can tell the user "we couldn't email you" instead
+// of silently claiming success. `previewUrl` is only set for the Ethereal dev
+// fallback.
+type SendResult = { previewUrl: string | null; ok: boolean; error?: string };
 
 export async function sendEmail({ to, subject, text, html }: SendArgs): Promise<SendResult> {
   try {
     // Resend unless it's been muted via EMAIL_PROVIDER=smtp/gmail.
     if (useResend()) {
       await sendViaResend({ to, subject, text, html });
-      return { previewUrl: null };
+      return { previewUrl: null, ok: true };
     }
     const transporter = await getTransporter();
     const info = await transporter.sendMail({ from: cachedFrom, to, subject, text, html });
     const preview = nodemailer.getTestMessageUrl(info) || null;
     console.log(`[email] To: ${to} | Subject: ${subject}`);
     if (preview) console.log(`[email] Preview: ${preview}`);
-    return { previewUrl: preview };
+    return { previewUrl: preview, ok: true };
   } catch (err) {
-    // Never let email failures break the auth flow. Log everything so the
-    // user can still grab the verification URL from the console.
+    // Never let email failures break the auth flow — but report ok:false so the
+    // caller can surface the problem. Log everything for debugging.
     console.error("[email] send failed:", err);
     console.log(`[email][fallback] To: ${to} | Subject: ${subject}\n${text}`);
-    return { previewUrl: null };
+    return { previewUrl: null, ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
 

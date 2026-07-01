@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { hashPassword, validatePasswordStrength } from "@/lib/password";
-import { generateToken, verificationExpiry } from "@/lib/tokens";
-import { sendEmail, buildAppUrl, isRealEmailConfigured } from "@/lib/email";
+import { issueEmailCode } from "@/lib/email-verification";
+import { sendEmail, isRealEmailConfigured } from "@/lib/email";
 import { renderEmail } from "@/lib/emailTemplate";
 import { enforceRateLimit } from "@/lib/rate-limit";
 
@@ -59,31 +59,29 @@ export async function POST(req: Request): Promise<Response> {
     return NextResponse.json({ ok: true, autoVerified: true });
   }
 
-  const token = generateToken();
-  await prisma.verificationToken.create({
-    data: { identifier: user.email!, token, expires: verificationExpiry() },
-  });
-  const link = buildAppUrl(`/auth/verify-email?token=${token}`);
+  const code = await issueEmailCode(user.email!);
   const { html, text } = renderEmail({
-    preheader: "One click to confirm your email and finish signing up.",
+    preheader: "Your QuizSpark verification code.",
     heading: `Verify your email, ${user.name}`,
-    body: "Tap the button below to confirm this email and activate your QuizSpark account.",
-    cta: { label: "Verify email", url: link },
-    footnote: "The link expires in 24 hours. If you didn't sign up, you can safely ignore this email.",
+    body: "Enter this 6-digit code in QuizSpark to confirm your email and activate your account:",
+    code,
+    footnote: "The code expires in 24 hours. If you didn't sign up, you can safely ignore this email.",
   });
-  const { previewUrl } = await sendEmail({
+  const { ok: emailSent, previewUrl } = await sendEmail({
     to: user.email!,
-    subject: "Verify your QuizSpark email",
+    subject: `Your QuizSpark verification code: ${code}`,
     text,
     html,
   });
 
-  // In dev/demo there is no real inbox (Ethereal), so digging the link out of
-  // the server console is painful. When real SMTP is NOT configured, return
-  // the verification link (and Ethereal preview) so the UI can show a
-  // one-click button. Strictly gated: with real SMTP this is never exposed.
+  // In dev/demo there is no real inbox (Ethereal), so return the code directly
+  // (and any Ethereal preview) so the tester can proceed without a real send.
+  // Strictly gated: once real email (SMTP/Resend) is configured, the code is
+  // never exposed in the API response.
   if (!isRealEmailConfigured()) {
-    return NextResponse.json({ ok: true, devVerifyUrl: link, previewUrl });
+    return NextResponse.json({ ok: true, email: user.email, devCode: code, previewUrl });
   }
-  return NextResponse.json({ ok: true });
+  // Real email is configured — tell the UI whether the send actually succeeded
+  // so it can prompt "resend / check spam" instead of silently claiming success.
+  return NextResponse.json({ ok: true, email: user.email, emailSent });
 }
