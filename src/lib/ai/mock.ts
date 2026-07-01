@@ -772,15 +772,26 @@ export async function mockGenerateQuiz(req: GenerateQuizRequest): Promise<Genera
 
   const questions: GeneratedQuestion[] = [];
   let variantCounter = 0;
+  // Ramp difficulty across the quiz so questions get progressively harder:
+  // from one level below the quiz difficulty up to one above, clamped 1–5.
+  // (Previously every question used the same flat difficulty.)
+  const totalQ = buckets.reduce((sum, b) => sum + b.count, 0);
+  const rampedDifficulty = (index: number): number => {
+    if (totalQ <= 1) return Math.min(5, Math.max(1, quizDifficulty));
+    const t = index / (totalQ - 1);
+    return Math.min(5, Math.max(1, Math.round(quizDifficulty - 1 + t * 2)));
+  };
+  let qIndex = 0;
   for (const bucket of buckets) {
     const tpl = pickTemplate(bucket.skill);
     for (let i = 0; i < bucket.count; i++) {
-      const q = tpl(bucket.skill, quizDifficulty, variantCounter++);
+      const q = tpl(bucket.skill, rampedDifficulty(qIndex), variantCounter++);
       q.weak_skill_targeted = bucket.weakTargeted;
       q.remediation_flag = student.conceptMastery.find(
         (p) => p.skillId === bucket.skill.id,
       )?.remediationFlag ?? false;
       questions.push(q);
+      qIndex++;
     }
   }
 
