@@ -124,6 +124,36 @@ export default async function AdminSettingsPage() {
       </section>
 
       <section className="rounded-lg border border-slate-700 bg-slate-800 p-6">
+        <h2 className="font-semibold text-slate-100">Database (scale check)</h2>
+        <p className="mt-1 text-sm text-slate-400">
+          For high concurrency the app must use Supabase&apos;s <strong>connection pooler</strong> (port 6543).
+          No secrets are shown here — only the host and connection type.
+        </p>
+        <dl className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+          <SmtpRow
+            label="Connection"
+            value={(() => {
+              const raw = process.env.DATABASE_URL ?? "";
+              if (!raw) return "(not set)";
+              if (raw.startsWith("file:")) return "SQLite (local dev)";
+              try {
+                const u = new URL(raw);
+                const pooled =
+                  u.hostname.includes("pooler") || u.port === "6543" || raw.includes("pgbouncer=true");
+                return `${pooled ? "Pooled ✓" : "DIRECT ⚠ — switch to the pooler"} · ${u.hostname}:${u.port || "5432"}`;
+              } catch {
+                return "(unparseable)";
+              }
+            })()}
+          />
+          <SmtpRow
+            label="DIRECT_URL (migrations)"
+            value={process.env.DIRECT_URL ? "set ✓" : "not set ⚠ — needed for deploy migrations"}
+          />
+        </dl>
+      </section>
+
+      <section className="rounded-lg border border-slate-700 bg-slate-800 p-6">
         <h2 className="font-semibold text-slate-100">Audit log</h2>
         <p className="mt-1 text-sm text-slate-400">Last 50 admin actions, newest first.</p>
         <ul className="mt-3 divide-y divide-slate-700 text-xs">

@@ -296,6 +296,26 @@ export async function loadDailyChallenge(
   return { letter: pick.letter, name: pick.name };
 }
 
+// A cheap "has assigned work changed?" signature for the child home's
+// near-real-time refresh. Two indexed aggregate queries (counts + max ids) —
+// far lighter than re-rendering the whole home. The client polls this and only
+// triggers a full refresh when the signature changes.
+export async function assignedSignature(studentId: number): Promise<string> {
+  const [q, h] = await Promise.all([
+    prisma.quiz.aggregate({
+      where: { studentId, status: "active" },
+      _count: true,
+      _max: { id: true },
+    }),
+    prisma.homeworkAssignment.aggregate({
+      where: { studentId, status: "active" },
+      _count: true,
+      _max: { id: true },
+    }),
+  ]);
+  return `q${q._count}:${q._max.id ?? 0}|h${h._count}:${h._max.id ?? 0}`;
+}
+
 export type TopicHub = {
   dailyChallenge: { letter: string; name: string; mastery: number | null } | null;
   recentTopics: { letter: string; name: string; mastery: number | null }[];

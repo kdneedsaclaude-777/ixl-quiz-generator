@@ -216,6 +216,8 @@ model Skill {
   mastery      ConceptMastery[]
 
   @@unique([topicGroupId, number])
+  // Generation maps question skill_codes back to rows via `code IN (...)`.
+  @@index([code])
 }
 
 model StudentTopicSelection {
@@ -266,6 +268,10 @@ model Quiz {
   xpLogs      XPLog[]
 
   @@index([studentId, mode])
+  // Hot: child home + history + last-quiz + count-today all filter by student +
+  // status and order by completedAt.
+  @@index([studentId, status])
+  @@index([studentId, completedAt])
 }
 
 model Question {
@@ -294,6 +300,11 @@ model Question {
   remediationFlag     Boolean   @default(false)
   needsReview         Boolean   @default(false)
   attempts            Attempt[]
+
+  // Questions are loaded by quiz on every quiz/results render, and by skill for
+  // mastery rollups. Postgres doesn't auto-index FKs — add them explicitly.
+  @@index([quizId])
+  @@index([skillId])
 }
 
 model Attempt {
@@ -305,6 +316,11 @@ model Attempt {
   selectedAnswer String
   isCorrect      Boolean
   createdAt      DateTime @default(now())
+
+  // Grading + "has this quiz been started?" checks filter by question; progress
+  // views filter by student.
+  @@index([questionId])
+  @@index([studentId])
 }
 
 model ConceptMastery {

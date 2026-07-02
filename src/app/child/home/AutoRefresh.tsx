@@ -1,24 +1,50 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
-// Lightweight near-real-time refresh for the child home: re-fetches the server
-// component on an interval and whenever the tab regains focus, so newly
-// tutor-assigned quizzes/homework/tests appear without a manual reload.
-export default function AutoRefresh({ intervalMs = 25_000 }: { intervalMs?: number }) {
+// Near-real-time refresh for the child home, done cheaply: instead of re-running
+// the whole home (~8 queries) on a timer, poll a tiny signature endpoint (2
+// indexed aggregates) and only trigger the full refresh when the student's
+// assigned work actually changes. Polls on an interval and on tab focus.
+export default function AutoRefresh({
+  signature,
+  intervalMs = 30_000,
+}: {
+  signature: string;
+  intervalMs?: number;
+}) {
   const router = useRouter();
+  const baseline = useRef(signature);
+  // Keep the baseline in sync after a real refresh re-renders the page.
   useEffect(() => {
-    const tick = () => {
-      // Don't refresh a backgrounded tab (saves work; focus handler covers return).
-      if (document.visibilityState === "visible") router.refresh();
-    };
-    const id = setInterval(tick, intervalMs);
-    window.addEventListener("focus", tick);
+    baseline.current = signature;
+  }, [signature]);
+
+  useEffect(() => {
+    let stopped = false;
+    async function check() {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const res = await fetch("/api/child/assigned-signature", { cache: "no-store" });
+        if (!res.ok) return;
+        const { sig } = (await res.json()) as { sig?: string };
+        if (!stopped && typeof sig === "string" && sig && sig !== baseline.current) {
+          baseline.current = sig;
+          router.refresh();
+        }
+      } catch {
+        // network blip — ignore, next tick retries
+      }
+    }
+    const id = setInterval(check, intervalMs);
+    window.addEventListener("focus", check);
     return () => {
+      stopped = true;
       clearInterval(id);
-      window.removeEventListener("focus", tick);
+      window.removeEventListener("focus", check);
     };
   }, [router, intervalMs]);
+
   return null;
 }

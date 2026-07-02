@@ -1,4 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "npm run db:use-postgres && next build"
+  "// buildCommand": "db:use-postgres sets the provider + directUrl. `prisma db push` then syncs the schema (new indexes/columns) to Supabase using DIRECT_URL. It is FAIL-SAFE: additive changes apply non-interactively; if it can't connect (e.g. DIRECT_URL missing) or a change would be destructive, the build fails and the previous deployment keeps serving — the live site is never left pointing at a schema it doesn't have.",
+  "buildCommand": "npm run db:use-postgres && npx prisma db push --skip-generate && next build"
 }

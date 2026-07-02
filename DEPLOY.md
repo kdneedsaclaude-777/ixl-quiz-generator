@@ -94,6 +94,26 @@ curl -X POST https://quiz.example.com/api/cron/notifications \
   -H "Authorization: Bearer $CRON_SECRET"
 ```
 
+## 5b. Scaling & the connection pooler (IMPORTANT for many concurrent users)
+
+Serverless (Vercel) spins up many app instances under load; each opens DB
+connections. Direct Postgres caps ~60, so **the app must connect through
+Supabase's connection pooler** or it will exhaust connections and lag/err at a
+few dozen concurrent users.
+
+- `DATABASE_URL` → **Supabase Transaction pooler** string (host contains
+  `pooler`, port **6543**). Append `?pgbouncer=true`. This is what the app uses.
+- `DIRECT_URL` → **Supabase Direct connection** string (port **5432**). Used
+  only for migrations / `prisma db push` at build time.
+- Both are in Supabase → Project Settings → Database → Connection string.
+- Confirm it's live: sign in as super-admin → **/admin/settings → Database
+  (scale check)** shows `Pooled ✓` or `DIRECT ⚠`, plus whether `DIRECT_URL` is set.
+
+For ~thousands of concurrent users also budget for **paid tiers**: Supabase Pro
+(+ a compute upgrade for CPU/RAM/connection headroom) and Vercel Pro. Indexes on
+the hot query paths are already in `schema.prisma`; the build applies them to
+Supabase via `prisma db push` (see `vercel.json`).
+
 ## 6. Rate limiting
 
 Sensitive endpoints (signup, password reset, resend-verification, quiz

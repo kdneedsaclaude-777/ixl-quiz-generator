@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { resolveActiveStudent } from "@/lib/active-child";
 import { prisma } from "@/lib/db";
-import { loadChildHomeStats, loadResumableQuiz, loadTopicHub, loadDailyChallenge } from "@/lib/gamification";
+import { loadChildHomeStats, loadResumableQuiz, loadTopicHub, loadDailyChallenge, assignedSignature } from "@/lib/gamification";
 import { levelTitle } from "@/lib/domain/gamification";
 import { loadChildWeeklyLeaderboard, isLeaderboardEnabled } from "@/lib/leaderboard";
 import { isStudentPaid } from "@/lib/plan";
@@ -58,7 +58,7 @@ export default async function ChildHomePage() {
     );
   }
 
-  const [stats, homework, lastQuiz, resumable, hub, activeTest, dailyChallenge, assignedQuizRows] = await Promise.all([
+  const [stats, homework, lastQuiz, resumable, hub, activeTest, dailyChallenge, assignedQuizRows, assignedSig] = await Promise.all([
     loadChildHomeStats(child.id),
     prisma.homeworkAssignment.findMany({
       where: { studentId: child.id, status: "active" },
@@ -100,6 +100,8 @@ export default async function ChildHomePage() {
         questions: { select: { skill: { select: { topicGroup: { select: { name: true } } } } } },
       },
     }),
+    // Cheap baseline for the near-real-time refresh poll.
+    assignedSignature(child.id),
   ]);
 
   // Dominant topic + question count per tutor-assigned quiz (for the card).
@@ -156,8 +158,9 @@ export default async function ChildHomePage() {
 
   return (
     <main className="space-y-5">
-      {/* Near-real-time: pick up tutor-assigned work without a manual reload. */}
-      <AutoRefresh />
+      {/* Near-real-time: pick up tutor-assigned work without a manual reload
+          (cheap signature poll → full refresh only when it changes). */}
+      <AutoRefresh signature={assignedSig} />
       {/* ── Header: avatar + greeting + streak ── */}
       <header className="flex items-center gap-3 pt-2">
         <div
