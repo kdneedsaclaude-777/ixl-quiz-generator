@@ -11,6 +11,7 @@ export default function NewEmployeeForm() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [created, setCreated] = useState<{ email: string; inviteSent: boolean } | null>(null);
   const [avail, setAvail] = useState<{ day: string; from: string; to: string }[]>([]);
   const [f, set] = useState({
     status: "Active",
@@ -55,7 +56,42 @@ export default function NewEmployeeForm() {
     const data = await res.json().catch(() => ({}));
     setBusy(false);
     if (!res.ok) { setError(data.error ?? "Failed to create employee."); return; }
-    router.push("/admin/users");
+    setCreated({ email: f.email, inviteSent: data.inviteSent !== false });
+  }
+
+  if (created) {
+    return (
+      <div className="max-w-3xl space-y-4 text-[color:var(--shell-text)]">
+        <div className="rounded-2xl border border-[color:var(--shell-border)] bg-white/5 p-6">
+          <h1 className="font-display text-3xl leading-none text-white">Employee created ✅</h1>
+          {created.inviteSent ? (
+            <p className="mt-3 text-sm text-[color:var(--shell-muted)]">
+              A “set your password” invite was emailed to{" "}
+              <span className="font-semibold text-white">{created.email}</span>. Once they choose a password they sign in
+              at the normal login page — there&apos;s no separate tutor login.
+            </p>
+          ) : (
+            <p className="mt-3 text-sm text-[color:var(--shell-muted)]">
+              The account was created, but the invite email couldn&apos;t be sent right now. The employee can still get in
+              by using <span className="font-semibold text-white">“Forgot password”</span> on the login page with{" "}
+              <span className="font-semibold text-white">{created.email}</span>.
+            </p>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <button type="button" onClick={() => router.push("/admin/users")} className="rounded-full bg-[#6366F1] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#4F46E5]">
+            Go to Users
+          </button>
+          <button
+            type="button"
+            onClick={() => { setCreated(null); set((p) => ({ ...p, firstName: "", lastName: "", email: "", mobilePhone: "" })); }}
+            className="rounded-full px-4 py-2.5 text-sm text-[color:var(--shell-muted)] hover:bg-white/5"
+          >
+            Add another
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (

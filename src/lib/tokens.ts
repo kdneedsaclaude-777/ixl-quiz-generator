@@ -20,3 +20,9 @@ export function verificationExpiry(): Date {
 export function passwordResetExpiry(): Date {
   return new Date(Date.now() + 1 * HOUR);
 }
+
+// Staff invites (admin-created tutor/admin accounts) get a longer window than a
+// self-service reset — they may not check email right away.
+export function inviteExpiry(): Date {
+  return new Date(Date.now() + 7 * 24 * HOUR);
+}
