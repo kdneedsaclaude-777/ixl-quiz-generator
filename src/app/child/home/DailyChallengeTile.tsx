@@ -4,19 +4,17 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import CMIcon from "@/components/CMIcon";
 
-// Daily Challenge: a short (5-question) quiz targeted at the student's weakest
-// enabled topic. The weakest topic + mastery are computed server-side (real
-// ConceptMastery) and passed in; the tile POSTs a topic-targeted quiz.
+// Daily Challenge: a short (5-question) quiz on the GLOBAL topic of the day —
+// the same challenge for every student in the grade, rotating daily, always at
+// the hardest difficulty. The topic is computed server-side and passed in.
 export default function DailyChallengeTile({
   studentId,
   topicLetter,
   topicName,
-  mastery,
 }: {
   studentId: number;
   topicLetter: string;
   topicName: string;
-  mastery: number | null;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -29,7 +27,13 @@ export default function DailyChallengeTile({
       const res = await fetch("/api/quiz/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ studentId, questionCount: 5, topicLetter, isDailyChallenge: true }),
+        body: JSON.stringify({
+          studentId,
+          questionCount: 5,
+          topicLetter,
+          difficulty: 5, // hardest — this is meant to be tough
+          isDailyChallenge: true,
+        }),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
@@ -49,20 +53,28 @@ export default function DailyChallengeTile({
         type="button"
         onClick={onClick}
         disabled={loading}
-        aria-label={`Start today's challenge: ${topicName}`}
+        aria-label={`Start today's challenge: ${topicName}, hardest level`}
         className="flex w-full items-center gap-3 rounded-[18px] border p-3.5 text-left transition-transform active:translate-y-0.5 disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cm-gold"
         style={{ background: "var(--cm-gold-soft)", borderColor: "rgba(232,163,23,.35)" }}
       >
         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white text-2xl" aria-hidden>
-          🎯
+          🔥
         </span>
         <span className="flex-1">
-          <span className="block text-[11px] font-bold tracking-wide" style={{ color: "#B45309" }}>
-            TODAY&apos;S CHALLENGE
+          <span className="flex items-center gap-1.5">
+            <span className="block text-[11px] font-bold tracking-wide" style={{ color: "#B45309" }}>
+              TODAY&apos;S CHALLENGE
+            </span>
+            <span
+              className="rounded-full px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-white"
+              style={{ background: "var(--cm-coral)" }}
+            >
+              Hardest
+            </span>
           </span>
           <span className="block text-sm font-bold text-slate-900">{topicName}</span>
           <span className="block text-xs text-slate-600">
-            {mastery === null ? "Let's find your starting point!" : `You're at ${mastery}% — beat it!`}
+            {loading ? "Building your challenge…" : "Same for everyone today — can you crack it? 💪"}
           </span>
         </span>
         <CMIcon name="chevron" size={18} color="#B45309" />

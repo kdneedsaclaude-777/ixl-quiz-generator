@@ -17,6 +17,9 @@ export type CreateQuizArgs = {
   mode: "practice" | "test";
   isDailyChallenge?: boolean;
   timeLimitSec?: number;
+  // Set by the tutor "Assign a quiz" flow — tags the quiz so the child home can
+  // surface it as tutor-assigned work (generatedBy="tutor").
+  assignedByTutor?: boolean;
 };
 
 export type CreateQuizResult =
@@ -26,13 +29,23 @@ export type CreateQuizResult =
 export async function createQuizForStudent(args: CreateQuizArgs): Promise<CreateQuizResult> {
   const { studentId, grade, questionCount, topicGroupIds, difficultyOverride, mode } = args;
   const isDailyChallenge = args.isDailyChallenge === true;
+  const assignedByTutor = args.assignedByTutor === true;
   const hasOverrides =
     Boolean(topicGroupIds) || difficultyOverride !== undefined || mode === "test" || isDailyChallenge;
 
   const existingQuizCount = await prisma.quiz.count({ where: { studentId } });
   const isFirstQuiz = existingQuizCount === 0;
 
-  const result = await generateQuiz({ studentId, questionCount, isFirstQuiz, topicGroupIds, difficultyOverride });
+  const result = await generateQuiz({
+    studentId,
+    questionCount,
+    isFirstQuiz,
+    topicGroupIds,
+    difficultyOverride,
+    // A daily challenge is a global, grade-wide topic that the child may not have
+    // enabled — let generation build on it (route already validated it).
+    allowAnyGradeTopic: isDailyChallenge,
+  });
   if (result.questions.length === 0) {
     return {
       ok: false,
@@ -56,7 +69,7 @@ export async function createQuizForStudent(args: CreateQuizArgs): Promise<Create
       difficulty: result.difficulty,
       mode,
       isDailyChallenge,
-      generatedBy: hasOverrides ? "manual" : "adaptive",
+      generatedBy: assignedByTutor ? "tutor" : hasOverrides ? "manual" : "adaptive",
       timeLimitSec:
         mode === "test"
           ? typeof args.timeLimitSec === "number" && Number.isFinite(args.timeLimitSec)

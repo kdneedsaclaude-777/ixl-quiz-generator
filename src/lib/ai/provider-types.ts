@@ -20,6 +20,11 @@ export type GenerateQuizRequest = {
   // every question to a fixed level instead of the student's adaptive level.
   topicGroupIds?: number[];
   difficultyOverride?: number;
+  // Global Daily Challenge: allow generation on topicGroupIds even if the
+  // student hasn't enabled them (the caller has already validated they're
+  // grade-appropriate, active, and not parental-locked). Lets the challenge be
+  // the same across a grade rather than limited to each child's enabled set.
+  allowAnyGradeTopic?: boolean;
 };
 
 export type GenerateQuizResult = {

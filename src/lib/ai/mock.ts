@@ -37,6 +37,9 @@ export function buildBuckets(args: {
 }): Bucket[] {
   const { skillsByGroup, weakSkillIds, totalQuestions } = args;
   const allSkills = [...skillsByGroup.values()].flat();
+  // No skills in the requested pool → no buckets. Return empty instead of
+  // dividing by zero below (buckets[i % 0]) and crashing the whole request.
+  if (allSkills.length === 0) return [];
   const weakSkills = allSkills.filter((s) => weakSkillIds.has(s.id));
 
   if (weakSkills.length === 0) {
@@ -712,7 +715,11 @@ export async function mockGenerateQuiz(req: GenerateQuizRequest): Promise<Genera
       conceptMastery: true,
     },
   });
-  if (student.topicSelections.length === 0) {
+  // Global Daily Challenge: build on the requested groups directly (already
+  // validated grade-appropriate/active/unlocked by the caller) even if the child
+  // hasn't enabled them — so the challenge can be the same across a grade.
+  const globalTopic = req.allowAnyGradeTopic === true && (req.topicGroupIds?.length ?? 0) > 0;
+  if (student.topicSelections.length === 0 && !globalTopic) {
     throw new Error("Student has no topic groups selected.");
   }
 
@@ -720,21 +727,28 @@ export async function mockGenerateQuiz(req: GenerateQuizRequest): Promise<Genera
   // student's topic groups; intersect so a client can never widen the pool past
   // what the parent enabled. Falls back to all enabled groups (adaptive default).
   const enabledGroupIds = student.topicSelections.map((s) => s.topicGroupId);
-  const selectedGroupIds =
-    req.topicGroupIds && req.topicGroupIds.length > 0
+  const selectedGroupIds = globalTopic
+    ? req.topicGroupIds!
+    : req.topicGroupIds && req.topicGroupIds.length > 0
       ? enabledGroupIds.filter((id) => req.topicGroupIds!.includes(id))
       : enabledGroupIds;
   const quizDifficulty = req.difficultyOverride ?? student.currentDifficulty;
   // Filter inactive topic groups + skills so admin toggles take effect
-  // immediately on subsequent quiz generations.
+  // immediately. For a global challenge, also pin to the student's grade
+  // (defense-in-depth; the route already validated the group's grade).
   const skills = await prisma.skill.findMany({
     where: {
       topicGroupId: { in: selectedGroupIds },
       active: true,
-      topicGroup: { active: true },
+      topicGroup: { active: true, ...(globalTopic ? { gradeLevel: student.grade } : {}) },
     },
     include: { topicGroup: true },
   });
+  if (skills.length === 0) {
+    // Nothing generatable for the requested pool — return empty so the caller
+    // surfaces a clean "no questions" 400 instead of crashing.
+    return { questions: [], difficulty: quizDifficulty };
+  }
 
   const skillsByGroup = new Map<string, SkillRecord[]>();
   for (const s of skills) {

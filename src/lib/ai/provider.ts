@@ -76,7 +76,10 @@ async function loadQuizContext(req: GenerateQuizRequest): Promise<{
       conceptMastery: { include: { skill: true } },
     },
   });
-  if (student.topicSelections.length === 0) {
+  // Global Daily Challenge: build on the requested groups directly (validated
+  // grade-appropriate/active/unlocked by the caller) even if unselected.
+  const globalTopic = req.allowAnyGradeTopic === true && (req.topicGroupIds?.length ?? 0) > 0;
+  if (student.topicSelections.length === 0 && !globalTopic) {
     throw new Error("Student has no topic groups selected.");
   }
 
@@ -85,16 +88,30 @@ async function loadQuizContext(req: GenerateQuizRequest): Promise<{
   // pick. If a requested filter matches none of the enabled groups, throw
   // (caller falls back to the mock, which produces a clean empty-pool 400)
   // rather than silently widening to the full set.
-  const selections =
-    req.topicGroupIds && req.topicGroupIds.length > 0
-      ? student.topicSelections.filter((sel) => req.topicGroupIds!.includes(sel.topicGroupId))
-      : student.topicSelections;
-  if (selections.length === 0) {
-    throw new Error("No enabled topic groups match the requested filter.");
+  let poolGroups: { letter: string; skillCodes: string[] }[];
+  if (globalTopic) {
+    const groups = await prisma.topicGroup.findMany({
+      where: { id: { in: req.topicGroupIds! }, gradeLevel: student.grade, active: true },
+      include: { skills: { where: { active: true } } },
+    });
+    poolGroups = groups.map((g) => ({ letter: g.letter, skillCodes: g.skills.map((s) => s.code) }));
+  } else {
+    const selections =
+      req.topicGroupIds && req.topicGroupIds.length > 0
+        ? student.topicSelections.filter((sel) => req.topicGroupIds!.includes(sel.topicGroupId))
+        : student.topicSelections;
+    if (selections.length === 0) {
+      throw new Error("No enabled topic groups match the requested filter.");
+    }
+    poolGroups = selections.map((sel) => ({
+      letter: sel.topicGroup.letter,
+      skillCodes: sel.topicGroup.skills.map((s) => s.code),
+    }));
   }
-
-  const allSelectedSkills = selections.flatMap((sel) => sel.topicGroup.skills);
-  const skillCodes = allSelectedSkills.map((s) => s.code);
+  const skillCodes = poolGroups.flatMap((g) => g.skillCodes);
+  if (skillCodes.length === 0) {
+    throw new Error("No skills available for the requested topic.");
+  }
 
   const weakSkillCodes = student.conceptMastery
     .filter(
@@ -104,7 +121,7 @@ async function loadQuizContext(req: GenerateQuizRequest): Promise<{
     )
     .map((p) => p.skill.code);
 
-  const focalLetter = selections[0].topicGroup.letter;
+  const focalLetter = poolGroups[0].letter;
 
   return {
     grade: student.grade,

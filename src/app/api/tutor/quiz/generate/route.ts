@@ -41,6 +41,7 @@ export async function POST(req: Request): Promise<Response> {
     grade: student.grade,
     questionCount,
     mode: "practice",
+    assignedByTutor: true,
   });
   if (!created.ok) return NextResponse.json({ error: created.error }, { status: created.status });
   return NextResponse.json({ quizId: created.quizId });

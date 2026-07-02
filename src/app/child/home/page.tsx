@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { resolveActiveStudent } from "@/lib/active-child";
 import { prisma } from "@/lib/db";
-import { loadChildHomeStats, loadResumableQuiz, loadTopicHub } from "@/lib/gamification";
+import { loadChildHomeStats, loadResumableQuiz, loadTopicHub, loadDailyChallenge } from "@/lib/gamification";
 import { levelTitle } from "@/lib/domain/gamification";
 import { loadChildWeeklyLeaderboard, isLeaderboardEnabled } from "@/lib/leaderboard";
 import { isStudentPaid } from "@/lib/plan";
@@ -15,6 +15,7 @@ import StartPracticeButton from "./StartPracticeButton";
 import DailyChallengeTile from "./DailyChallengeTile";
 import QuickPickRow from "./QuickPickRow";
 import LockScreen from "./LockScreen";
+import AutoRefresh from "./AutoRefresh";
 
 export const metadata = { title: "Home — QuizSpark" };
 
@@ -57,7 +58,7 @@ export default async function ChildHomePage() {
     );
   }
 
-  const [stats, homework, lastQuiz, resumable, hub, activeTest] = await Promise.all([
+  const [stats, homework, lastQuiz, resumable, hub, activeTest, dailyChallenge, assignedQuizRows] = await Promise.all([
     loadChildHomeStats(child.id),
     prisma.homeworkAssignment.findMany({
       where: { studentId: child.id, status: "active" },
@@ -81,7 +82,37 @@ export default async function ChildHomePage() {
         questions: { select: { skill: { select: { topicGroup: { select: { name: true } } } } } },
       },
     }),
+    // Global daily challenge — same per grade, rotates daily, hardest difficulty.
+    loadDailyChallenge(child.id),
+    // Tutor-assigned practice quizzes the child hasn't started yet (0 answers).
+    prisma.quiz.findMany({
+      where: {
+        studentId: child.id,
+        status: "active",
+        mode: "practice",
+        generatedBy: "tutor",
+        questions: { none: { attempts: { some: {} } } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      select: {
+        id: true,
+        questions: { select: { skill: { select: { topicGroup: { select: { name: true } } } } } },
+      },
+    }),
   ]);
+
+  // Dominant topic + question count per tutor-assigned quiz (for the card).
+  const assignedQuizzes = assignedQuizRows.map((q) => {
+    const counts = new Map<string, number>();
+    for (const qq of q.questions) {
+      const n = qq.skill.topicGroup.name;
+      counts.set(n, (counts.get(n) ?? 0) + 1);
+    }
+    const topicName = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "Practice";
+    return { id: q.id, topicName, count: q.questions.length };
+  });
+  const hasAssignedWork = assignedQuizzes.length > 0 || Boolean(activeTest) || homework.length > 0;
 
   const xpPct = Math.min(100, Math.round((stats.currentLevelXp / stats.nextLevelXp) * 100));
   const xpToGo = Math.max(0, stats.nextLevelXp - stats.currentLevelXp);
@@ -125,6 +156,8 @@ export default async function ChildHomePage() {
 
   return (
     <main className="space-y-5">
+      {/* Near-real-time: pick up tutor-assigned work without a manual reload. */}
+      <AutoRefresh />
       {/* ── Header: avatar + greeting + streak ── */}
       <header className="flex items-center gap-3 pt-2">
         <div
@@ -255,54 +288,65 @@ export default async function ChildHomePage() {
       {/* ── Big coral start button ── */}
       <StartPracticeButton studentId={child.id} hasResumable={Boolean(resumable)} />
 
-      {/* ── Daily challenge (weakest enabled topic) ── */}
-      {hub.dailyChallenge && (
-        <DailyChallengeTile
-          studentId={child.id}
-          topicLetter={hub.dailyChallenge.letter}
-          topicName={hub.dailyChallenge.name}
-          mastery={hub.dailyChallenge.mastery}
-        />
-      )}
-
-      {/* ── Quick pick: jump back into a topic ── */}
-      <QuickPickRow studentId={child.id} topics={hub.recentTopics} />
-
-      {/* ── Assigned real test (proctored) ── */}
-      {activeTest && (
-        <Link
-          href={`/child/test/${activeTest.id}`}
-          aria-label={`Start your ${testTopic} test`}
-          className="flex items-center gap-3 rounded-[18px] border p-3.5 transition-transform active:translate-y-0.5"
-          style={{ background: "var(--cm-red-soft)", borderColor: "rgba(194,95,95,.35)" }}
-        >
-          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white" aria-hidden>
-            <CMIcon name="lock" size={20} color="var(--cm-coral)" />
-          </div>
-          <div className="flex-1">
-            <div className="text-[11px] font-bold tracking-wide" style={{ color: "#9F1239" }}>REAL TEST · ASSIGNED</div>
-            <div className="text-sm font-bold text-slate-900">{testTopic} test</div>
-            <div className="text-xs text-slate-600">
-              {activeTest.questions.length} questions
-              {activeTest.timeLimitSec ? ` · ${formatClock(activeTest.timeLimitSec)}` : ""}
-            </div>
-          </div>
-          <CMIcon name="chevron" size={18} color="#9F1239" />
-        </Link>
-      )}
-
-      {/* ── Assigned (real homework) ── */}
-      {homework.length > 0 && (
+      {/* ── Assigned to you: tutor quizzes + real test + homework, one clear place ── */}
+      {hasAssignedWork && (
         <section>
           <div className="mb-2 flex items-center justify-between">
-            <h3 className="text-sm font-bold text-slate-700">ASSIGNED</h3>
+            <div className="flex items-center gap-1.5">
+              <span aria-hidden>📋</span>
+              <h3 className="text-sm font-bold text-slate-700">ASSIGNED TO YOU</h3>
+            </div>
             <Link href="/child/progress" className="text-xs font-semibold text-cm-blue">See all</Link>
           </div>
           <div className="grid gap-2">
+            {/* Tutor-assigned practice quizzes not started yet */}
+            {assignedQuizzes.map((q) => (
+              <Link
+                key={`aq-${q.id}`}
+                href={`/child/quiz/${q.id}`}
+                aria-label={`Start your assigned ${q.topicName} quiz`}
+                className="cm-card flex items-center gap-3 p-3.5 transition-transform active:translate-y-0.5"
+              >
+                <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl" style={{ background: "var(--cm-mint-soft)" }}>
+                  <CMIcon name="play" size={20} color="var(--cm-mint)" />
+                </div>
+                <div className="flex-1">
+                  <div className="text-[11px] font-bold tracking-wide" style={{ color: "var(--cm-mint)" }}>FROM YOUR TUTOR · QUIZ</div>
+                  <div className="text-sm font-bold text-slate-900">{q.topicName} practice</div>
+                  <div className="mt-0.5 text-xs text-slate-500">{q.count} question{q.count === 1 ? "" : "s"} · tap to start</div>
+                </div>
+                <CMIcon name="chevron" size={18} color="#94A3B8" />
+              </Link>
+            ))}
+
+            {/* Assigned real test (proctored) */}
+            {activeTest && (
+              <Link
+                href={`/child/test/${activeTest.id}`}
+                aria-label={`Start your ${testTopic} test`}
+                className="flex items-center gap-3 rounded-[18px] border p-3.5 transition-transform active:translate-y-0.5"
+                style={{ background: "var(--cm-red-soft)", borderColor: "rgba(194,95,95,.35)" }}
+              >
+                <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white" aria-hidden>
+                  <CMIcon name="lock" size={20} color="var(--cm-coral)" />
+                </div>
+                <div className="flex-1">
+                  <div className="text-[11px] font-bold tracking-wide" style={{ color: "#9F1239" }}>REAL TEST · ASSIGNED</div>
+                  <div className="text-sm font-bold text-slate-900">{testTopic} test</div>
+                  <div className="text-xs text-slate-600">
+                    {activeTest.questions.length} questions
+                    {activeTest.timeLimitSec ? ` · ${formatClock(activeTest.timeLimitSec)}` : ""}
+                  </div>
+                </div>
+                <CMIcon name="chevron" size={18} color="#9F1239" />
+              </Link>
+            )}
+
+            {/* Homework from the tutor */}
             {homework.map((h) => {
               const skillCount = parseSkillIds(h.assignedSkillIds).length;
               return (
-                <div key={h.id} className="cm-card flex items-center gap-3 p-3.5">
+                <div key={`hw-${h.id}`} className="cm-card flex items-center gap-3 p-3.5">
                   <div className="self-stretch rounded-full" style={{ width: 8, background: "var(--cm-blue)" }} />
                   <div className="flex-1">
                     <div className="text-[11px] font-semibold text-slate-500">
@@ -323,6 +367,18 @@ export default async function ChildHomePage() {
           </div>
         </section>
       )}
+
+      {/* ── Daily challenge (global · same per grade · hardest · rotates daily) ── */}
+      {dailyChallenge && (
+        <DailyChallengeTile
+          studentId={child.id}
+          topicLetter={dailyChallenge.letter}
+          topicName={dailyChallenge.name}
+        />
+      )}
+
+      {/* ── Quick pick: jump back into a topic ── */}
+      <QuickPickRow studentId={child.id} topics={hub.recentTopics} />
 
       {/* ── Last quiz (real) ── */}
       {lastQuiz && typeof lastQuiz.score === "number" && (

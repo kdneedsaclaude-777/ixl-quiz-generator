@@ -258,6 +258,44 @@ export async function loadResumableQuiz(studentId: number): Promise<ResumableQui
   return { id: quiz.id, topicName, answered, total };
 }
 
+// ── Global Daily Challenge ─────────────────────────────────────────────────
+// One challenge for EVERY student in a grade, the same for everyone on a given
+// day and rotating daily — NOT based on the individual child's weak topics.
+// Always the hardest difficulty. The topic is chosen by a date seed over the
+// grade's active topic groups (parental-locked groups excluded for that child).
+export type DailyChallenge = { letter: string; name: string };
+
+// Days since the Unix epoch (UTC). Same integer for everyone on a calendar day,
+// increments once per day → deterministic global rotation with no stored state.
+function utcDayIndex(today: Date): number {
+  return Math.floor(today.getTime() / 86_400_000);
+}
+
+export async function loadDailyChallenge(
+  studentId: number,
+  today: Date = new Date(),
+): Promise<DailyChallenge | null> {
+  const student = await prisma.student.findUnique({
+    where: { id: studentId },
+    select: { grade: true },
+  });
+  if (!student) return null;
+
+  const groups = await prisma.topicGroup.findMany({
+    where: { gradeLevel: student.grade, active: true },
+    orderBy: { letter: "asc" }, // deterministic order → stable global rotation
+    select: { id: true, letter: true, name: true },
+  });
+  if (groups.length === 0) return null;
+
+  const { loadLockedTopicGroupIds } = await import("@/lib/parental");
+  const locked = new Set(await loadLockedTopicGroupIds(studentId));
+  const pool = groups.filter((g) => !locked.has(g.id));
+  const usable = pool.length > 0 ? pool : groups; // all locked → fall back
+  const pick = usable[utcDayIndex(today) % usable.length];
+  return { letter: pick.letter, name: pick.name };
+}
+
 export type TopicHub = {
   dailyChallenge: { letter: string; name: string; mastery: number | null } | null;
   recentTopics: { letter: string; name: string; mastery: number | null }[];
