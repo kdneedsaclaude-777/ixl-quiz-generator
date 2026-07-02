@@ -104,7 +104,21 @@ export default async function AdminSettingsPage() {
         <h2 className="font-semibold text-slate-100">Email (SMTP)</h2>
         <p className="mt-1 text-sm text-slate-400">SMTP credentials live in <code className="font-mono text-slate-200">.env</code> and aren't edited here.</p>
         <dl className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-          <SmtpRow label="Provider (dev)" value="Ethereal (auto-created at runtime)" />
+          <SmtpRow
+            label="Provider"
+            value={
+              ["smtp", "gmail"].includes((process.env.EMAIL_PROVIDER ?? "").toLowerCase())
+                ? process.env.SMTP_HOST
+                  ? `SMTP · ${process.env.SMTP_HOST}`
+                  : "SMTP (not configured)"
+                : process.env.RESEND_API_KEY
+                  ? "Resend"
+                  : process.env.SMTP_HOST
+                    ? `SMTP · ${process.env.SMTP_HOST}`
+                    : "Ethereal (dev fallback)"
+            }
+          />
+          <SmtpRow label="From" value={process.env.EMAIL_FROM ?? process.env.SMTP_USER ?? "(unset)"} />
           <SmtpRow label="NEXTAUTH_URL" value={process.env.NEXTAUTH_URL ?? "(unset)"} />
         </dl>
       </section>

@@ -172,8 +172,8 @@ export default function PhoneForm({
             </button>
             {devCode && (
               <p className="rounded-xl border border-cm-blue bg-cm-blue-50 px-3 py-2 text-xs text-cm-blue-600 dark:border-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-100">
-                <span className="font-semibold">Dev mode — no real SMS provider:</span>{" "}
-                your code is <span className="font-mono">{devCode}</span>
+                <span className="font-semibold">Text messaging isn&apos;t set up yet</span> — enter this code to verify:{" "}
+                <span className="font-mono">{devCode}</span>
               </p>
             )}
           </div>

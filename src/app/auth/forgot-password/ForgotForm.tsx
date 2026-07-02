@@ -26,9 +26,12 @@ export default function ForgotForm() {
         <span className="grid h-11 w-11 place-items-center rounded-xl" style={{ background: "var(--cm-mint)" }}>
           <CMIcon name="bell" size={20} color="#fff" stroke={2} />
         </span>
-        <p className="mt-3 text-sm text-slate-700 dark:text-emerald-100">
-          If an account exists for that email, we&apos;ve sent a reset link. Check the dev console for the Ethereal
-          preview URL.
+        <p className="mt-3 font-display text-xl leading-tight text-slate-900 dark:text-emerald-50">
+          Check your inbox
+        </p>
+        <p className="mt-1 text-sm text-slate-700 dark:text-emerald-100">
+          If an account exists for that email, we&apos;ve sent a password reset link. It expires in an hour — if it&apos;s
+          not there in a minute, check your spam folder.
         </p>
       </div>
     );
