@@ -342,6 +342,15 @@ model ConceptMastery {
   @@unique([studentId, skillId])
 }
 
+// Internal key/value store for the ops console (deliberately NOT surfaced in the
+// admin UI). Used for global switches. Reads are defensive so a missing table
+// (pre-migration) never breaks the app.
+model OwnerSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt @default(now())
+}
+
 model VideoResource {
   id               Int      @id @default(autoincrement())
   subject          String

@@ -6,6 +6,7 @@ import { studentEmoji } from "@/lib/student-emoji";
 import { levelTitle } from "@/lib/domain/gamification";
 import Spark from "@/components/Spark";
 import CMIcon from "@/components/CMIcon";
+import OpsTrigger from "./OpsTrigger";
 
 export const metadata = { title: "Tutor dashboard" };
 
@@ -41,6 +42,7 @@ export default async function TutorDashboardPage() {
 
   return (
     <div className="space-y-5">
+      <OpsTrigger />
       {/* header */}
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
