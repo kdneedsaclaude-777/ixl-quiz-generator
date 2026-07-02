@@ -67,6 +67,12 @@ async function getTransporter(): Promise<Transporter> {
 
   if (realSmtpConfigured()) {
     const port = parseInt(process.env.SMTP_PORT ?? "587", 10);
+    // Gmail App Passwords are DISPLAYED with spaces ("abcd efgh ijkl mnop").
+    // Users very commonly paste them WITH the spaces into the host env, and
+    // Gmail then rejects the login (535 "Username and Password not accepted").
+    // Strip all whitespace defensively so either form works. Trim the user too.
+    const user = (process.env.SMTP_USER ?? "").trim();
+    const pass = (process.env.SMTP_PASS ?? "").replace(/\s+/g, "");
     cachedTransporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port,
@@ -75,10 +81,15 @@ async function getTransporter(): Promise<Transporter> {
       secure: process.env.SMTP_SECURE
         ? process.env.SMTP_SECURE === "true"
         : port === 465,
-      auth: { user: process.env.SMTP_USER!, pass: process.env.SMTP_PASS! },
+      auth: { user, pass },
+      // Fail fast on serverless (Vercel) instead of hanging the function until
+      // the platform kills it — surfaces connection/egress problems quickly.
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 20_000,
     });
-    cachedFrom = process.env.EMAIL_FROM ?? process.env.SMTP_USER!;
-    console.log(`[email] SMTP transport ready (host=${process.env.SMTP_HOST}).`);
+    cachedFrom = process.env.EMAIL_FROM ?? user;
+    console.log(`[email] SMTP transport ready (host=${process.env.SMTP_HOST}, port=${port}, user=${user}).`);
     return cachedTransporter;
   }
 
