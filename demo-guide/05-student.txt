@@ -18,10 +18,10 @@
 └──────────────────────────────────────────────────────────────────────┘
 
   /child/home          The home page
-      • Big "Start practice" button — the only call to action.
-      • XP bar with level number (xpToLevel curve).
-      • Streak counter (consecutive practice days).
-      • Last 3 badges they earned.
+      • Big "Start practice" button — the first thing they see.
+      • XP bar with level number (xpToLevel curve) + streak counter.
+      • Daily practice goal card — progress toward the parent-set target.
+      • Badge progress (next badge + how close they are).
       • Last quiz card with quick "Take another" link.
       • Time-lock screen if outside the parental window — friendly
         copy, shows when they can come back.
@@ -36,15 +36,13 @@
 
   /child/quiz/[quizId]/results    The reveal screen
       • Animated score number counts up to the final percentage.
-      • XP earned this round (score × 10).
-      • Any new badges unlock with a popping animation:
-          ◆ First Quiz
-          ◆ Perfect Score
-          ◆ Topic Master [X] — 3 perfects on the same topic
-          ◆ Speed Demon — finished in under 3 minutes
-          ◆ Comeback Kid — prior <40% on a topic, now >80%
-          ◆ Streak ×N — N consecutive practice days
-          ◆ Level Up — crossed an XP threshold
+      • Itemized XP reveal: base XP = the score percent (100% = 100 XP =
+        one level), plus bonuses (perfect, streak, first-of-day, daily
+        challenge, comeback, test) — each shown as its own line.
+      • Any new badges unlock with a popping animation. 15 badges total
+        across First Quiz / Perfect Score / Topic Master / Speed Demon /
+        Comeback Kid / Streak 3·14·30 / Level 5·10 / Test Ace / Daily
+        Challenge / Centurion.
       • CTA back to home, or "Practice again".
 
   /child/progress       Their own dashboard
@@ -54,6 +52,8 @@
       • Per-topic mastery bar (which skills are strong / weak).
 
   /child/account        Their own settings
+      • Pick an avatar — choose an emoji avatar (or keep the auto one);
+        it shows on home + the parent/tutor views.
       • Add or verify a phone number (Twilio dev fallback prints code
         to console).
       • Request a password reset email.

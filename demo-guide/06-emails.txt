@@ -43,11 +43,14 @@
       OFF  → no emails of any kind go out
       ON   → emails follow the per-role + per-event rules below
 
-  Channel auto-detected:
-      • If RESEND_API_KEY is set → real inbox delivery via Resend.
-      • If SMTP_HOST/USER/PASS set → real SMTP.
-      • Otherwise → Ethereal dev account; preview URL prints to the
+  Channel (current = Gmail Workspace SMTP):
+      • EMAIL_PROVIDER=smtp forces Gmail/SMTP and MUTES Resend, even if a
+        Resend key is still present (reversible — remove the line).
+      • SMTP_HOST/USER/PASS set (admin@conceptmastery.ca) → real Gmail send.
+      • If none set → Ethereal dev account; the code/preview prints to the
         terminal that runs `npm run dev`.
+      • ⚠️ On the LIVE site, these SMTP vars must be set in Vercel or no
+        email is delivered (it silently falls back to the dev inbox).
 
 
 ┌──────────────────────────────────────────────────────────────────────┐
@@ -57,7 +60,7 @@
   EVENT                            WHO GETS IT          DEDUPED?
   -------------------------------- -------------------- --------------
   Account created (organic)        New user             —
-    → verification email
+    → verification email (6-digit code, not a link)
   Email verified for the 1st time  New user             ✓ once/user
     → welcome email
   Account created by an admin      New user             ✓ once/user
@@ -131,8 +134,8 @@
 │  DEMO HOOKS                                                          │
 └──────────────────────────────────────────────────────────────────────┘
 
-   1. Sign up a brand-new parent → console prints the verification
-      preview URL → click it → second email lands: the welcome.
+   1. Sign up a brand-new parent → a 6-digit code is emailed (or shown
+      in dev) → enter it to verify → second email lands: the welcome.
    2. As admin, create a new tutor via "+ New user" → welcome email
       fires immediately (auto-verified path).
    3. As admin, assign that tutor to Ben (G6) → tutor gets a "you've

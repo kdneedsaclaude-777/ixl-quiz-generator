@@ -1,5 +1,11 @@
 # QuizSpark — Revenue Model & Cost Breakdown
 
+> **📍 Status:** QuizSpark currently ships as a **free build** (billing muted via
+> `NEXT_PUBLIC_BILLING_ENABLED=false`) for the initial team/client test — **no one
+> is charged today.** This document is the **plan for when the paid $5/mo model is
+> switched back on** (it's one flag flip; nothing was deleted). Treat the numbers
+> as the forward business case, not current revenue.
+
 A plain-English model of what QuizSpark earns and costs. All figures are
 estimates using public rates; confirm against live pricing before quoting them
 to anyone. Currency: CAD.

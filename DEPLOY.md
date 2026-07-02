@@ -1,8 +1,27 @@
 # Production Deployment
 
+> ## 📍 Current phase (2026-07-01) — already live
+> QuizSpark is **deployed and running** as a **free build** for the team/client
+> test:
+> - **Host:** Vercel — **DB:** Supabase (Postgres). Live URL:
+>   **https://quizspark-cm.vercel.app** (push to `main` → auto-deploy).
+> - **Free build:** `NEXT_PUBLIC_BILLING_ENABLED=false` — every feature unlocked,
+>   all paywalls/upgrade UI hidden. The paid **$5/mo Stripe model below is muted,
+>   not deleted** — flip the switch to re-enable it. Until then you can **skip the
+>   Stripe steps (§7)** entirely.
+> - **Email:** Gmail Workspace SMTP (`admin@conceptmastery.ca`, `EMAIL_PROVIDER=smtp`).
+>   Resend is muted (kept as a later option — see §5).
+> - **AI:** the deterministic mock generator. Real Claude generation is one env
+>   flip away (`AI_PROVIDER=claude` + `ANTHROPIC_API_KEY`) — not enabled yet.
+>
+> The rest of this file is the **full production playbook** (incl. the paid model)
+> for when billing is switched back on. Steps not needed for the current free
+> build are flagged inline.
+
 The app runs on **SQLite by default** for local dev and demos. Production
-uses **Postgres**, real **SMTP/Resend**, **Stripe**, and per-route **rate
-limiting**. None of the production steps affect local `prisma/dev.db`.
+uses **Postgres**, real **SMTP/Resend**, **Stripe** (when billing is on), and
+per-route **rate limiting**. None of the production steps affect local
+`prisma/dev.db`.
 
 > **Which keys to fetch and where:** see [`docs/API_KEYS.md`](docs/API_KEYS.md).
 > **Publishing to Google Play:** Phase B at the bottom of this file.
@@ -10,7 +29,8 @@ limiting**. None of the production steps affect local `prisma/dev.db`.
 > ⚠️ In production the app **refuses to boot** if `NEXTAUTH_SECRET`,
 > `DATABASE_URL`, or the public app URL are missing, or if `PUBLIC_TEST_MODE=true`
 > (see `src/instrumentation.ts`). It warns when Stripe / email / `CRON_SECRET`
-> are unset. This fails fast instead of misbehaving silently.
+> are unset — and in the free build it logs "FREE build" and skips the Stripe
+> warnings. This fails fast instead of misbehaving silently.
 
 ## 1. Environment
 
@@ -21,6 +41,16 @@ cp .env.production.example .env   # then fill in real secrets
 Required: `DATABASE_URL` (Postgres), `NEXTAUTH_SECRET`, `NEXTAUTH_URL`,
 `CRON_SECRET`. Recommended: `SMTP_*` (without it, email falls back to an
 Ethereal test inbox — fine for staging, not production).
+
+> **Email in the current build = Gmail Workspace SMTP.** Set `EMAIL_PROVIDER=smtp`
+> plus `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=587`, `SMTP_USER=admin@conceptmastery.ca`,
+> `SMTP_PASS=<Gmail app password>`, `EMAIL_FROM="Concept Mastery <admin@conceptmastery.ca>"`.
+> `EMAIL_PROVIDER=smtp` mutes Resend even if a Resend key is still present
+> (reversible — remove the line to go back to Resend). **These must be set on the
+> host (Vercel), not just in local `.env`** — otherwise the live site silently
+> falls back to the dev inbox and no email is delivered. Email verification uses
+> a **6-digit code** (not a link); the app password must be a Gmail *App Password*
+> (2-Step Verification required), not the account login password.
 
 ## 2. Switch the Prisma provider to Postgres
 
@@ -72,7 +102,11 @@ instance. For multi-instance/serverless, back `src/lib/rate-limit.ts` with
 Redis (Upstash) using the same `rateLimit()` signature; the call sites don't
 change.
 
-## 7. Stripe (payments)
+## 7. Stripe (payments) — ⏸️ not needed in the current free build
+
+> **Skip this section for now.** The live build runs with `NEXT_PUBLIC_BILLING_ENABLED=false`,
+> so there is no checkout path and the Stripe env vars aren't required. Do this
+> only when re-enabling the paid $5/mo model (flip the switch, then follow below).
 
 Use **live mode** keys for the shipped app. Set `STRIPE_SECRET_KEY`,
 `STRIPE_PRICE_ID` (a recurring $5/mo price), and — after the app is deployed —
@@ -126,9 +160,11 @@ to add these once the host is locked.
 - [ ] `NEXTAUTH_SECRET` is a fresh 32-byte random value (not the dev default)
 - [ ] `CRON_SECRET` set and not the placeholder
 - [ ] `NEXTAUTH_URL` + `NEXT_PUBLIC_APP_URL` = the real HTTPS domain
+      (current: `https://quizspark-cm.vercel.app`)
 - [ ] `npm run db:use-postgres` run; `npx prisma migrate deploy` clean; seeded
-- [ ] Email verified (real provider, `EMAIL_FROM` on your domain, SPF/DKIM); dev Gmail password rotated
-- [ ] Stripe live keys + webhook configured; one real test payment verified
+- [ ] **Email set on the host:** `EMAIL_PROVIDER=smtp` + all `SMTP_*` + `EMAIL_FROM`
+      in Vercel; send a real signup and confirm the 6-digit code arrives
+- [ ] Stripe live keys + webhook — **only when re-enabling billing** (free build skips it)
 - [ ] Real admin created; demo/seed accounts NOT in prod
 - [ ] `/api/health` green; daily cron firing
 - [ ] Privacy policy & terms reviewed by legal

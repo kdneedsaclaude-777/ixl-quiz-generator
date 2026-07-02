@@ -1,5 +1,10 @@
 # DNS change request — email sending for conceptmastery.ca (QuizSpark)
 
+> **📍 Status: not needed right now.** QuizSpark currently sends email through
+> **Gmail Workspace SMTP** (`admin@conceptmastery.ca`), which needs **no DNS
+> changes**. This request only applies if/when we switch email delivery to
+> **Resend** for higher volume later. Keep it on file; don't action it yet.
+
 **For:** whoever manages DNS for `conceptmastery.ca`
 **Purpose:** let the QuizSpark app send account emails (sign-up verification, notifications) from a `@conceptmastery.ca` address via Resend (our email provider).
 **Impact:** **additive and safe.** These records only *add* email-sending authentication. They do **not** change your website, and they do **not** affect your existing inboxes (e.g. `admin@conceptmastery.ca`) — the sending records sit on a dedicated `send.` subdomain.

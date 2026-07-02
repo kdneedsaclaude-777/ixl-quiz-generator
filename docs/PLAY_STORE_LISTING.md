@@ -4,6 +4,13 @@ Copy/paste-ready listing content plus the answers for Google Play's **Data
 Safety** form and **content rating** questionnaire. Review before submitting;
 adjust anything that doesn't match final practices.
 
+> **📍 Current phase = free build (no in-app purchases live).** Billing is muted
+> (`NEXT_PUBLIC_BILLING_ENABLED=false`), so the app currently has **no paid tier
+> and no digital purchases**. The copy and answers below are written for that
+> free build. When the paid $5/mo model is switched back on, re-add: the
+> "QuizSpark Plus" section to the description, the **Payment info** row to Data
+> Safety, and change **Digital purchases** to **Yes** in the content rating.
+
 ---
 
 ## App identity
@@ -14,7 +21,7 @@ adjust anything that doesn't match final practices.
 - **Category:** Education
 - **Tags:** education, math, kids, practice, quizzes
 - **Contact email:** admin@conceptmastery.ca
-- **Privacy policy URL:** `https://YOUR_DOMAIN/privacy`
+- **Privacy policy URL:** `https://quizspark-cm.vercel.app/privacy`
 
 ---
 
@@ -39,15 +46,9 @@ WHY FAMILIES LOVE IT
 • Motivation built in — XP, levels, badges, and daily streaks.
 • Parent dashboard — track progress, scores, and topics at a glance.
 
-FREE TO START
-• One quiz a day, one child profile, plus badges and XP — free, forever.
-
-QUIZSPARK PLUS ($5/month)
-• Unlimited quizzes
-• Add unlimited children
-• Real Tests — timed and proctored
-• Weekly leaderboard
-• Full progress charts, topic mastery, and complete history
+FREE TO USE
+• Unlimited quizzes, unlimited learners, full progress and topic mastery —
+  all free while we're in early access.
 
 SAFE BY DESIGN
 A parent creates and controls the account and decides which children are added.
@@ -84,7 +85,6 @@ Data types collected:
 | Name (parent + child first name) | Yes | App functionality, account management | Required |
 | Email address | Yes | Account management, comms | Required |
 | Phone number | Yes (if user verifies one) | Account security | Optional |
-| Payment info | Yes (via Stripe; we don't store card numbers) | Purchases | Optional |
 | App activity (quiz results, progress) | Yes | App functionality, analytics | Required |
 | App info & performance (logs/diagnostics) | Yes | Security, diagnostics | Required |
 
@@ -104,7 +104,8 @@ Expect an **Everyone / PEGI 3 / "Rated for 3+"** outcome. Answer truthfully:
 - User-to-user communication / shared content: **No** (no chat; the weekly
   leaderboard shows first names within the family/cohort only).
 - Personal info shared with others: **No**.
-- Digital purchases: **Yes** (QuizSpark Plus subscription).
+- Digital purchases: **No** (free build — no in-app purchases live; change to
+  **Yes** when the Plus subscription is switched on).
 
 ---
 
@@ -120,8 +121,8 @@ review path:
 ---
 
 ## Pricing & distribution
-- **App is free to download** (free tier in-app; Plus is an in-app subscription).
-  Note: subscriptions sold outside Google Play Billing (Stripe, via the web) are
-  permitted for a web app opened in a TWA, but review Google Play's payments
-  policy for your case — this is worth confirming before launch.
+- **App is free to download and free to use** — the current build has **no
+  in-app purchases**. (When the paid $5/mo Plus tier is switched on, revisit
+  Google Play's payments policy: subscriptions sold outside Google Play Billing
+  via the web/TWA need confirming before launch.)
 - **Countries:** start with Canada (+ others as desired).

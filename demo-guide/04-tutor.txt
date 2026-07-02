@@ -32,10 +32,12 @@
       • Read-only mirror of the parent's child page:
           – Score trend chart (clickable points → quiz results)
           – Quiz history table
-          – Weak topics panel
+          – Weak topics panel + topic-mastery heatmap
           – Concept-mastery summary
-      • Tutor notes panel (private to the tutor).
-      • CSV / PDF export for tutor's own records.
+      • "Assign a quiz" — generate an adaptive practice quiz that lands in
+        the student's account for them to take (no parental/freemium gating).
+      • Approve a newly-claimed student (tutorApproved gate).
+      • Tutor notes / session log + homework assignment (private to the tutor).
 
 
 ┌──────────────────────────────────────────────────────────────────────┐

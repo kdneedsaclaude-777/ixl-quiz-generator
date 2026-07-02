@@ -30,10 +30,15 @@ ever switching context.
 │  URLS                                                                │
 └──────────────────────────────────────────────────────────────────────┘
 
+  LIVE (Vercel):       https://quizspark-cm.vercel.app   (the deployed free build)
   Same machine:        http://localhost:3000
   Same Wi-Fi network:  http://192.168.2.10:3000   (use on phones)
 
-  All accounts are PRE-VERIFIED. No email confirmation required.
+  All demo accounts are PRE-VERIFIED. No email confirmation required.
+  New live sign-ups verify with a 6-digit code emailed via Gmail.
+
+  This is a FREE build: every feature is unlocked, no paywalls (the paid
+  $5/mo model is muted behind NEXT_PUBLIC_BILLING_ENABLED for now).
 
 
 ┌──────────────────────────────────────────────────────────────────────┐

@@ -18,13 +18,14 @@
 └──────────────────────────────────────────────────────────────────────┘
 
    ▸ Dashboard         All-children rollup
-   ▸ Children          Card list, "+ Add child" → /onboarding
-   ▸ Notifications     Activity feed (quiz completed, badge earned, …)
-   ▸ Settings
-       └ Account       Name, email, password, soft-delete
-       └ Notifications 4 toggles (per-quiz email, weekly digest,
-                       low-score alert, no-practice-days alert)
-   ▸ Logout
+   ▸ Students          Card list, "+ Add student" → /onboarding
+   ▸ 🔔 bell (top-right) Notification dropdown (shop-style): quiz completed,
+                       badge earned, streak, low-score — mark read / open
+   ▸ Account (top-right) Name, email, password, soft-delete + Logout
+       └ Notifications  Email toggles + Web Push (browser) opt-in
+
+   Parental profile lock: the parent area (and anything that needs a
+   password) is gated by a 4-digit PIN emailed to the parent.
 
 
 ┌──────────────────────────────────────────────────────────────────────┐
@@ -32,12 +33,14 @@
 └──────────────────────────────────────────────────────────────────────┘
 
   /parent/dashboard
-      • 4 summary cards: children count, quizzes this week, avg score
-        this week, hardest topic across all children.
-      • Multi-line trend chart — one colored line per child, last 30
-        days of scores.
-      • Child cards with avatar, current level, last-active time,
-        quick "Open" button.
+      • Summary cards: students count, quizzes this week, LAST QUIZ SCORE
+        (most recent completed across all children), submitted / not
+        submitted. (The old "avg this week" + "hardest topic" tiles were
+        removed in an earlier review round.)
+      • Multi-line trend chart — one colored line per child, with a range
+        filter (30 / 90 days / 1 year + custom from/to; buckets auto-scale).
+      • Student cards with avatar (custom emoji or auto), current level,
+        last-active time, quick "View" button.
 
   /parent/child/[id]   ← the heart of the parent panel
       • Big avatar + name + grade + current difficulty level.
@@ -47,13 +50,15 @@
         Not started) and Resume/View/Start link per row.
       • Weak topics panel — skills the adaptive engine has flagged for
         remediation.
+      • Topic-mastery heatmap — per-topic strength at a glance.
+      • Daily practice goal — set the child's per-day target (shown as a
+        progress card on their home).
       • Edit which topic groups the child practices (EditTopics).
       • Parental controls form:
-          – Max quizzes per day (or unlimited)
           – Allowed practice window (start / end, supports overnight
             spans like 22:00 → 02:00)
           – Lock specific topic groups
-      • CSV / PDF export of the child's full history.
+        (The per-day quiz cap was removed — quizzes are unlimited.)
 
   /parent/children
       • Same as the dashboard list, page of its own.
@@ -86,7 +91,9 @@
       panel for that child in another tab — they hit a "practice is
       locked right now" screen.
    3. Set window back to 00:00 → 23:59 and they're unblocked.
-   4. CSV export → spreadsheet of every attempt with timestamps.
+   4. Set a daily practice goal → open the kid panel and watch the goal
+      progress card fill as they finish quizzes.
+   5. Topic-mastery heatmap on the child page shows strong vs weak topics.
 
 
 ┌──────────────────────────────────────────────────────────────────────┐

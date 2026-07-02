@@ -9,6 +9,55 @@
 
 
 ════════════════════════════════════════════════════════════════════════
+  v2.14.0  ·  2026-07-01  ·  "Live on Vercel — Gmail email + engagement batch"
+════════════════════════════════════════════════════════════════════════
+
+  The free build is now DEPLOYED and reachable by the team, email moved to the
+  Concept Mastery Gmail Workspace, and a batch of engagement/retention features
+  landed. Build passes; 199/199 tests; verified live behind auth.
+
+  LIVE DEPLOYMENT
+   • Hosted on Vercel, database on Supabase (Postgres). Live URL:
+     https://quizspark-cm.vercel.app  (push to `main` → auto-deploy).
+   • Prisma provider flips to Postgres at build time (npm run db:use-postgres);
+     schema + curriculum + demo accounts pushed/seeded to Supabase.
+   • Still a FREE build — NEXT_PUBLIC_BILLING_ENABLED=false, every feature
+     unlocked, all paywalls hidden. The $5/mo model stays muted (flip to
+     re-enable). AI question-gen stays on the built-in mock (real Claude is one
+     env flip away: AI_PROVIDER=claude + ANTHROPIC_API_KEY — not enabled yet).
+
+  EMAIL → GMAIL WORKSPACE
+   • Switched off Resend, onto Gmail Workspace SMTP (admin@conceptmastery.ca)
+     via EMAIL_PROVIDER=smtp. Reversible — remove the line to go back to Resend.
+     Verification, notifications, and PIN emails all send through it.
+
+  LOGIN + PARENT UI
+   • Login redesigned to one clean form (no client-ID field). Hidden staff/admin
+     login opens by typing "ADMIN-01" on the login page.
+   • Parent cleanup: top-right Logout, notification-bell dropdown (shop-style),
+     "Your children" heading removed, last-quiz score shown, "0 weak" hidden,
+     3 named difficulty levels. "Add child" renamed to "Add student" everywhere.
+   • Parental profile lock: a 4-digit PIN (emailed to the parent) gates the
+     parent area and anything that requires a password.
+
+  ENGAGEMENT / RETENTION
+   • Student avatar customization (pick an emoji avatar; falls back to the
+     auto one) — shown on home, parent, and tutor views.
+   • Daily practice goal — per-student target with a progress card on home.
+   • Badge progress on the student home; topic-mastery heatmap on the parent
+     child page; filterable quiz history; richer weekly parent digest.
+   • Web Push notifications (VAPID + service worker) alongside the in-app
+     notification bell — streak nudges and billing/plan events can push.
+
+  TUTOR
+   • Tutors can assign an adaptive practice quiz straight from a student's page
+     ("Assign a quiz") — lands in the student's account to take.
+
+  FIX
+   • Question difficulty now RAMPS within a quiz (easier → harder across the
+     set) instead of every question sitting at one flat level.
+
+════════════════════════════════════════════════════════════════════════
   v2.13.0  ·  2026-06-26  ·  "Free build — billing muted (reversible)"
 ════════════════════════════════════════════════════════════════════════
 
