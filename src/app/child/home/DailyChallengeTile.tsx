@@ -53,28 +53,28 @@ export default function DailyChallengeTile({
         type="button"
         onClick={onClick}
         disabled={loading}
-        aria-label={`Start today's challenge: ${topicName}, hardest level`}
+        aria-label={`Start today's daily challenge: ${topicName}`}
         className="flex w-full items-center gap-3 rounded-[18px] border p-3.5 text-left transition-transform active:translate-y-0.5 disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cm-gold"
         style={{ background: "var(--cm-gold-soft)", borderColor: "rgba(232,163,23,.35)" }}
       >
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white text-2xl" aria-hidden>
-          🔥
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white" aria-hidden>
+          <CMIcon name="target" size={22} color="var(--cm-gold)" />
         </span>
         <span className="flex-1">
           <span className="flex items-center gap-1.5">
             <span className="block text-[11px] font-bold tracking-wide" style={{ color: "#B45309" }}>
-              TODAY&apos;S CHALLENGE
+              DAILY CHALLENGE
             </span>
             <span
-              className="rounded-full px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-white"
-              style={{ background: "var(--cm-coral)" }}
+              className="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide"
+              style={{ background: "var(--cm-gold-soft)", color: "#B45309", border: "1px solid rgba(232,163,23,.4)" }}
             >
-              Hardest
+              Advanced
             </span>
           </span>
           <span className="block text-sm font-bold text-slate-900">{topicName}</span>
           <span className="block text-xs text-slate-600">
-            {loading ? "Building your challenge…" : "Same for everyone today — can you crack it? 💪"}
+            {loading ? "Preparing today's challenge…" : "Today's featured topic at the highest difficulty."}
           </span>
         </span>
         <CMIcon name="chevron" size={18} color="#B45309" />
