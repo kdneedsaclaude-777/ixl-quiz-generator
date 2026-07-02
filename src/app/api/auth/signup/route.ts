@@ -67,7 +67,7 @@ export async function POST(req: Request): Promise<Response> {
     code,
     footnote: "The code expires in 24 hours. If you didn't sign up, you can safely ignore this email.",
   });
-  const { ok: emailSent, previewUrl, error: emailError } = await sendEmail({
+  const { ok: emailSent, previewUrl } = await sendEmail({
     to: user.email!,
     subject: `Your QuizSpark verification code: ${code}`,
     text,
@@ -83,12 +83,6 @@ export async function POST(req: Request): Promise<Response> {
   }
   // Real email is configured — tell the UI whether the send actually succeeded
   // so it can prompt "resend / check spam" instead of silently claiming success.
-  // On failure we surface the (non-secret) SMTP error message so delivery
-  // problems on the host are diagnosable instead of invisible.
-  return NextResponse.json({
-    ok: true,
-    email: user.email,
-    emailSent,
-    ...(emailSent ? {} : { emailError }),
-  });
+  // (The underlying error is logged server-side by sendEmail, not returned.)
+  return NextResponse.json({ ok: true, email: user.email, emailSent });
 }
