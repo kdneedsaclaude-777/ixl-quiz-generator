@@ -125,6 +125,33 @@ export default async function ChildAccountPage() {
           </div>
         </div>
       </section>
+
+      {/* ── Log out ── */}
+      <section className="cm-card p-5">
+        <div className="flex items-start gap-3">
+          <div
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-2xl"
+            style={{ background: "var(--cm-red-soft)" }}
+            aria-hidden
+          >
+            👋
+          </div>
+          <div className="flex-1">
+            <h2 className="text-base font-bold text-slate-900">Log out</h2>
+            <p className="mt-0.5 text-sm text-slate-600">
+              Sign out of your account on this device.
+            </p>
+            <a
+              href="/auth/logout"
+              className="cm-btn mt-3"
+              style={{ background: "var(--cm-coral)", color: "#fff" }}
+            >
+              Log out
+              <CMIcon name="arrow" size={16} color="#fff" />
+            </a>
+          </div>
+        </div>
+      </section>
     </main>
   );
 }
