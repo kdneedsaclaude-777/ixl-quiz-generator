@@ -1,5 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "// buildCommand": "db:use-postgres sets provider + directUrl. `prisma db push` then syncs schema (new indexes/columns) to Supabase using DIRECT_URL. It is BEST-EFFORT: if it can't run (e.g. DIRECT_URL not set) the build still continues and ships the code — nothing currently deployed depends on the new schema, so a skipped push just means indexes apply on a later deploy once DIRECT_URL exists. Set DATABASE_URL=pooler(6543) and DIRECT_URL=direct(5432) in Vercel to enable it.",
-  "buildCommand": "npm run db:use-postgres && (npx prisma db push --skip-generate || echo 'WARN: prisma db push skipped (schema not synced) — set DIRECT_URL in Vercel') && next build"
+  "buildCommand": "npm run db:use-postgres && (timeout 90 npx prisma db push --skip-generate || echo 'db push skipped') && next build"
 }
