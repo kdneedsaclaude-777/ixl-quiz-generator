@@ -4,14 +4,14 @@ import { getAdminForApi } from "@/lib/auth/admin";
 import { enforceRateLimit } from "@/lib/rate-limit";
 
 // Server-side proxy for the embedded PDF → questions generator (/admin/import).
-// The browser tool used to call api.anthropic.com directly, which (a) leaked the
-// API key into client code and (b) was blocked by CORS. This route keeps the key
-// server-side, requires an admin session, and returns { questions: [...] }.
+// Keeps the API key server-side, requires an admin session, returns { questions }.
 //
-// Needs ANTHROPIC_API_KEY in the environment. Until that's provided it returns a
-// clear 503 so the admin knows what's missing rather than seeing a CORS error.
+// LLM: Groq (free tier, OpenAI-compatible) when GROQ_API_KEY is set — the primary
+// path. Falls back to Anthropic when only ANTHROPIC_API_KEY is set. Returns a
+// clear 503 when neither is configured.
 
-const MODEL = process.env.CLAUDE_MODEL ?? "claude-opus-4-7";
+const GROQ_MODEL = process.env.GROQ_MODEL ?? "llama-3.3-70b-versatile";
+const ANTHROPIC_MODEL = process.env.CLAUDE_MODEL ?? "claude-opus-4-7";
 const MAX_TOKENS = 8_000;
 
 type QuestionType = "mcq" | "true_false" | "fill_in_blank";
@@ -58,10 +58,11 @@ export async function POST(req: Request): Promise<Response> {
   const auth = await getAdminForApi();
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
+  const groqKey = process.env.GROQ_API_KEY;
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  if (!groqKey && !anthropicKey) {
     return NextResponse.json(
-      { error: "AI is not configured yet — set ANTHROPIC_API_KEY on the server to enable PDF generation." },
+      { error: "AI is not configured yet — set GROQ_API_KEY (or ANTHROPIC_API_KEY) on the server to enable PDF generation." },
       { status: 503 },
     );
   }
@@ -80,17 +81,43 @@ export async function POST(req: Request): Promise<Response> {
   // slices per-source, this is the backstop.
   const sourceText = text.slice(0, 24_000);
 
+  const prompt = buildPrompt(sourceText, count, types);
+
   try {
-    const client = new Anthropic({ apiKey });
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: MAX_TOKENS,
-      messages: [{ role: "user", content: buildPrompt(sourceText, count, types) }],
-    });
-    const raw = response.content
-      .map((b) => (b.type === "text" ? b.text : ""))
-      .join("")
-      .trim();
+    let raw: string;
+
+    if (groqKey) {
+      // Groq — OpenAI-compatible chat completions, JSON mode.
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${groqKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: GROQ_MODEL,
+          max_tokens: MAX_TOKENS,
+          temperature: 0.4,
+          response_format: { type: "json_object" },
+          messages: [{ role: "user", content: prompt }],
+        }),
+      });
+      if (!res.ok) {
+        const detail = await res.text().catch(() => "");
+        console.error("[generate-questions] Groq error", res.status, detail);
+        return NextResponse.json({ error: "AI generation failed. Please try again." }, { status: 502 });
+      }
+      const j = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+      raw = (j.choices?.[0]?.message?.content ?? "").trim();
+    } else {
+      const client = new Anthropic({ apiKey: anthropicKey! });
+      const response = await client.messages.create({
+        model: ANTHROPIC_MODEL,
+        max_tokens: MAX_TOKENS,
+        messages: [{ role: "user", content: prompt }],
+      });
+      raw = response.content
+        .map((b) => (b.type === "text" ? b.text : ""))
+        .join("")
+        .trim();
+    }
 
     const clean = raw.replace(/```json|```/g, "").trim();
     let parsed: unknown;
