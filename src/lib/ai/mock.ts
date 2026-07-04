@@ -102,7 +102,7 @@ function distribute(pool: SkillRecord[], total: number, weak: boolean, out: Buck
 
 type Template = (skill: SkillRecord, difficulty: number, variant: number) => GeneratedQuestion;
 
-function pickTemplate(skill: SkillRecord): Template {
+export function pickTemplate(skill: SkillRecord): Template {
   const name = skill.name.toLowerCase();
   const groupName = skill.topicGroup.name.toLowerCase();
   // Word-problem skills must read like a story, not a bare computation —
@@ -118,6 +118,16 @@ function pickTemplate(skill: SkillRecord): Template {
   if (/fraction|mixed number|denominator|numerator/.test(name)) return fractionTemplate;
   if (/integer|negative|absolute/.test(name)) return integerTemplate;
   if (/percent/.test(name)) return percentTemplate;
+  // Place value / number sense: value of a digit, which digit is in a place,
+  // rounding, comparing/ordering numbers, expanded/standard/word form. Checked
+  // after the operation keywords (so "compare fractions" still → fractions).
+  if (
+    /place value|value of (a |the )?digit|expanded form|standard form|word form|\brounding?\b|compare (whole )?numbers?|greater than|less than|order(ing)? numbers?|number sense|digit value/.test(
+      name,
+    )
+  ) {
+    return placeValueTemplate;
+  }
   // Fall back to topic-group hints so unmatched skill names still produce
   // natural, grade-appropriate phrasing instead of generic placeholders.
   if (/multiplication|multiply/.test(groupName)) return multiplicationTemplate;
@@ -126,6 +136,7 @@ function pickTemplate(skill: SkillRecord): Template {
   if (/fraction/.test(groupName)) return fractionTemplate;
   if (/integer/.test(groupName)) return integerTemplate;
   if (/percent/.test(groupName)) return percentTemplate;
+  if (/place value|number sense/.test(groupName)) return placeValueTemplate;
   if (/measurement|geometry/.test(groupName)) return areaTemplate;
   return naturalArithmeticTemplate;
 }
@@ -234,6 +245,213 @@ function mcqOptions(
   });
   return { options, correctKey };
 }
+
+// ── Place value / number sense ─────────────────────────────────────────────
+const PV_PLACES: { name: string; val: number }[] = [
+  { name: "ones", val: 1 },
+  { name: "tens", val: 10 },
+  { name: "hundreds", val: 100 },
+  { name: "thousands", val: 1000 },
+  { name: "ten thousands", val: 10000 },
+  { name: "hundred thousands", val: 100000 },
+];
+
+// Options builder that accepts pedagogically-chosen distractors (unlike the
+// numeric-noise mcqOptions), dedupes, pads to 4, shuffles, formats with commas.
+function pvOptions(
+  correct: number,
+  distractors: number[],
+  rng: () => number,
+): { options: Record<string, string>; correctKey: string } {
+  const used = new Set<number>([correct]);
+  const chosen: number[] = [];
+  for (const d of distractors) {
+    if (chosen.length >= 3) break;
+    if (Number.isFinite(d) && d >= 0 && !used.has(d)) {
+      used.add(d);
+      chosen.push(d);
+    }
+  }
+  let pad = correct + 1;
+  while (chosen.length < 3) {
+    if (!used.has(pad)) {
+      used.add(pad);
+      chosen.push(pad);
+    }
+    pad += 1;
+  }
+  const all = [correct, ...chosen];
+  for (let i = all.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [all[i], all[j]] = [all[j], all[i]];
+  }
+  const keys = ["A", "B", "C", "D"];
+  const options: Record<string, string> = {};
+  let correctKey = "A";
+  all.forEach((v, idx) => {
+    options[keys[idx]] = v.toLocaleString("en-US");
+    if (v === correct) correctKey = keys[idx];
+  });
+  return { options, correctKey };
+}
+
+function placeLabel(name: string): string {
+  if (name === "ten thousands") return "ten thousand";
+  if (name === "hundred thousands") return "hundred thousand";
+  return name.replace(/s$/, "");
+}
+
+const placeValueTemplate: Template = (skill, difficulty, variant) => {
+  const rng = seededRandom(`${skill.code}-place-${difficulty}-${variant}`);
+  // Digit count scales with difficulty: 3 (d1) … 6 (d4+).
+  const digits = Math.min(6, Math.max(3, 2 + difficulty));
+  const most = digits - 1; // highest available place index (0 = ones)
+  const ds: number[] = [1 + Math.floor(rng() * 9)]; // leading digit 1–9
+  for (let i = 1; i < digits; i++) ds.push(Math.floor(rng() * 10));
+  const N = Number(ds.join(""));
+  const Nfmt = N.toLocaleString("en-US");
+  const digitAt = (placeIdx: number) => ds[digits - 1 - placeIdx]; // placeIdx 0 = ones
+  const base = {
+    ...buildBase(skill, difficulty),
+    learning_objective: "Understand place value and number sense",
+    concept_tags: ["place value", "number sense"],
+  };
+  const sub = variant % 4;
+
+  if (sub === 0) {
+    // Value of a digit at a chosen (non-ones) place.
+    const placeIdx = 1 + Math.floor(rng() * most);
+    const place = PV_PLACES[placeIdx];
+    const d = digitAt(placeIdx);
+    const correct = d * place.val;
+    const { options, correctKey } = pvOptions(
+      correct,
+      [d, d * place.val * 10, Math.floor((d * place.val) / 10), (d + 1) * place.val],
+      rng,
+    );
+    return {
+      ...base,
+      question_text: `In the number ${Nfmt}, what is the value of the digit ${d} (in the ${place.name} place)?`,
+      answer_options: options,
+      correct_answer: correctKey,
+      explanation: {
+        short: `The digit ${d} is in the ${place.name} place, so its value is ${d} × ${place.val.toLocaleString("en-US")} = ${correct.toLocaleString("en-US")}.`,
+        step_by_step: [
+          `The digit ${d} sits in the ${place.name} place, which is worth ${place.val.toLocaleString("en-US")}.`,
+          `Value = digit × place value = ${d} × ${place.val.toLocaleString("en-US")} = ${correct.toLocaleString("en-US")}.`,
+        ],
+        why_wrong: Object.fromEntries(
+          Object.entries(options)
+            .filter(([k]) => k !== correctKey)
+            .map(([k, v]) => [k, `${v} is not ${d} × ${place.val.toLocaleString("en-US")}.`]),
+        ),
+        revision_tip: "A digit's value = the digit × the value of its place.",
+      },
+    };
+  }
+
+  if (sub === 1) {
+    // Which digit is in a given place?
+    const placeIdx = Math.floor(rng() * digits);
+    const place = PV_PLACES[placeIdx];
+    const correct = digitAt(placeIdx);
+    const { options, correctKey } = pvOptions(
+      correct,
+      [digitAt((placeIdx + 1) % digits), digitAt((placeIdx + 2) % digits), (correct + 4) % 10],
+      rng,
+    );
+    return {
+      ...base,
+      question_text: `Which digit is in the ${place.name} place of ${Nfmt}?`,
+      answer_options: options,
+      correct_answer: correctKey,
+      explanation: {
+        short: `Reading ${Nfmt} by place, the ${place.name} place holds ${correct}.`,
+        step_by_step: [
+          `Places from the right: ones, tens, hundreds, thousands, …`,
+          `The ${place.name} place of ${Nfmt} is ${correct}.`,
+        ],
+        why_wrong: Object.fromEntries(
+          Object.entries(options)
+            .filter(([k]) => k !== correctKey)
+            .map(([k, v]) => [k, `${v} is not the digit in the ${place.name} place.`]),
+        ),
+        revision_tip: "Count places from the right: ones, tens, hundreds, …",
+      },
+    };
+  }
+
+  if (sub === 2) {
+    // Round to the nearest ten / hundred / thousand (a place below the top one).
+    const placeIdx = 1 + Math.floor(rng() * Math.max(1, most - 1));
+    const place = PV_PLACES[placeIdx];
+    const correct = Math.round(N / place.val) * place.val;
+    const { options, correctKey } = pvOptions(
+      correct,
+      [Math.floor(N / place.val) * place.val, Math.ceil(N / place.val) * place.val + place.val, N],
+      rng,
+    );
+    return {
+      ...base,
+      question_text: `Round ${Nfmt} to the nearest ${placeLabel(place.name)}.`,
+      answer_options: options,
+      correct_answer: correctKey,
+      explanation: {
+        short: `${Nfmt} rounded to the nearest ${placeLabel(place.name)} is ${correct.toLocaleString("en-US")}.`,
+        step_by_step: [
+          `Look at the digit just to the right of the ${place.name} place.`,
+          `If it is 5 or more, round up; otherwise round down → ${correct.toLocaleString("en-US")}.`,
+        ],
+        why_wrong: Object.fromEntries(
+          Object.entries(options)
+            .filter(([k]) => k !== correctKey)
+            .map(([k, v]) => [k, `${v} is not ${Nfmt} rounded to the nearest ${placeLabel(place.name)}.`]),
+        ),
+        revision_tip: "Check the digit immediately to the right of the rounding place.",
+      },
+    };
+  }
+
+  // sub === 3 → compare: which number is the greatest?
+  const nums = new Set<number>([N]);
+  const step = PV_PLACES[Math.min(most, 2)].val;
+  while (nums.size < 4) {
+    const delta = (1 + Math.floor(rng() * 9)) * step * (rng() < 0.5 ? -1 : 1);
+    nums.add(Math.max(0, N + delta));
+  }
+  const arr = [...nums];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  const maxV = Math.max(...arr);
+  const keys = ["A", "B", "C", "D"];
+  const options: Record<string, string> = {};
+  let correctKey = "A";
+  arr.forEach((v, idx) => {
+    options[keys[idx]] = v.toLocaleString("en-US");
+    if (v === maxV) correctKey = keys[idx];
+  });
+  return {
+    ...base,
+    question_text: "Which of these numbers is the greatest?",
+    answer_options: options,
+    correct_answer: correctKey,
+    explanation: {
+      short: `${maxV.toLocaleString("en-US")} is the greatest.`,
+      step_by_step: [
+        "Compare the numbers starting from the highest place value.",
+        `The largest is ${maxV.toLocaleString("en-US")}.`,
+      ],
+      why_wrong: Object.fromEntries(
+        Object.entries(options)
+          .filter(([k]) => k !== correctKey)
+          .map(([k, v]) => [k, `${v} is not the greatest of the four.`]),
+      ),
+      revision_tip: "Compare digits from the leftmost (highest) place first.",
+    },
+  };
+};
 
 function buildBase(
   skill: SkillRecord,
