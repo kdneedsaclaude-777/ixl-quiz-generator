@@ -118,4 +118,7 @@
    5. Sidebar → Settings → flip Maintenance Mode on. Open an incognito
       window and visit /parent — get the maintenance page. Flip it off.
    6. Sidebar → Settings → Audit Log. Show the rows for the impersonate
-      enter, exit, and the maintenance flag flip.
+      enter, exit, and the maintenance flag flip. 
+      API KEYS:
+      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
+      - (groq) hey claude pls put into the pdf generator aka the curriculum generator -- this is a free tier.

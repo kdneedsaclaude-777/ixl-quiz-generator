@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!--DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -413,6 +413,518 @@ function showToast(msg, type = 'success') {
   setTimeout(() => { t.className = ''; }, 3200);
 }
 function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+</script>
+</body>
+</html>
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuizSpark · PDF Question Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #FAFAF7; --surface: #ffffff; --surface2: #F4F6FB; --border: #E6E8EF;
+    --blue: #5C7BAE; --blue-600: #4A6896; --blue-50: #EDF2F9;
+    --gold: #E8A317; --gold-soft: #FBEACB;
+    --coral: #C25F5F; --coral-soft: #F4DCDC;
+    --mint: #4E9F7B; --mint-soft: #DCEFE3;
+    --ink: #0F172A; --muted: #64748B; --muted2: #94A3B8;
+    --radius: 18px;
+    --ui: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --display: 'Instrument Serif', Georgia, serif;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+    --shadow: 0 1px 2px rgba(15,23,42,.04), 0 8px 24px -12px rgba(15,23,42,.12);
+    --shadow-pop: 0 4px 12px rgba(15,23,42,.08), 0 24px 48px -12px rgba(15,23,42,.18);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--paper); color: var(--ink); font-family: var(--ui); min-height: 100vh; padding: 32px 18px 56px; -webkit-font-smoothing: antialiased; }
+  .app { max-width: 820px; margin: 0 auto; }
+
+  header { text-align: center; margin-bottom: 28px; }
+  .brand { display: inline-flex; align-items: center; gap: 10px; }
+  .brand-name { font-weight: 800; font-size: 15px; letter-spacing: -.01em; color: #4D4D4D; }
+  header h1 { font-family: var(--display); font-size: 2.6rem; line-height: 1.05; letter-spacing: -.02em; margin: 18px 0 6px; color: var(--ink); }
+  header p { color: var(--muted); font-size: .95rem; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+
+  #dropZone { border: 2px dashed #CBD5E1; border-radius: var(--radius); background: var(--surface); padding: 44px 24px; text-align: center; cursor: pointer; transition: all .2s; }
+  #dropZone.drag-over { border-color: var(--blue); background: var(--blue-50); }
+  #dropZone .dz-icon { font-size: 2.6rem; margin-bottom: 10px; }
+  #dropZone h3 { font-size: 1.05rem; margin-bottom: 5px; }
+  #dropZone p { color: var(--muted); font-size: .85rem; }
+  .browse-btn { display: inline-flex; align-items: center; gap: 7px; margin-top: 16px; background: var(--blue); color: #fff; padding: 10px 22px; border-radius: 999px; font-size: .85rem; font-weight: 700; cursor: pointer; transition: background .2s; }
+  .browse-btn:hover { background: var(--blue-600); }
+  #fileInput { display: none; }
+
+  #fileList { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .file-item { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow); }
+  .fi-icon { font-size: 1.4rem; }
+  .fi-info { flex: 1; min-width: 0; }
+  .fi-name { font-size: .9rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fi-size { font-size: .78rem; color: var(--muted); margin-top: 2px; }
+  .fi-status { font-size: .72rem; font-weight: 700; padding: 4px 11px; border-radius: 999px; letter-spacing: .02em; }
+  .fi-status.ready { background: var(--blue-50); color: var(--blue); }
+  .fi-status.extracting { background: var(--gold-soft); color: #92660A; }
+  .fi-status.done { background: var(--mint-soft); color: #047857; }
+  .fi-status.error { background: var(--coral-soft); color: #B43326; }
+  .fi-remove { background: none; border: none; color: var(--muted2); cursor: pointer; font-size: 1rem; padding: 4px; border-radius: 6px; transition: color .2s; }
+  .fi-remove:hover { color: var(--coral); }
+
+  .settings-bar { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 20px; margin-top: 18px; display: flex; flex-wrap: wrap; gap: 18px; align-items: center; }
+  .settings-bar label { font-size: .85rem; color: var(--muted); display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .settings-bar input[type=range] { accent-color: var(--blue); width: 110px; }
+  .settings-bar .val { color: var(--gold); font-weight: 800; font-size: .95rem; min-width: 22px; }
+  .chk-group { display: flex; gap: 14px; flex-wrap: wrap; }
+  .settings-bar input[type=checkbox] { accent-color: var(--blue); width: 16px; height: 16px; }
+  .sep { color: var(--border); }
+  .types-label { font-size: .83rem; color: var(--muted); font-weight: 600; }
+
+  #generateBtn { width: 100%; margin-top: 18px; background: linear-gradient(135deg, var(--blue), var(--blue-600)); color: #fff; border: none; border-radius: var(--radius); padding: 16px; font-size: 1.02rem; font-weight: 800; cursor: pointer; transition: transform .1s, box-shadow .2s, opacity .2s; box-shadow: 0 6px 0 #3C5680; display: flex; align-items: center; justify-content: center; gap: 9px; }
+  #generateBtn:hover:not(:disabled) { box-shadow: 0 6px 0 #3C5680, var(--shadow-pop); }
+  #generateBtn:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 3px 0 #3C5680; }
+  #generateBtn:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+
+  #errBox { display: none; margin-top: 14px; background: var(--coral-soft); border: 1px solid rgba(194,95,95,.3); border-radius: 14px; padding: 14px 16px; font-size: .85rem; color: #B43326; line-height: 1.5; }
+
+  #progressBar { margin-top: 16px; display: none; padding: 18px 20px; }
+  .prog-label { font-size: .85rem; color: var(--muted); margin-bottom: 9px; display: flex; justify-content: space-between; font-weight: 600; }
+  .prog-track { height: 8px; background: var(--surface2); border-radius: 999px; overflow: hidden; }
+  .prog-fill { height: 100%; background: linear-gradient(90deg, var(--blue), var(--gold)); border-radius: 999px; transition: width .3s; }
+  .prog-step { font-size: .8rem; color: var(--muted2); margin-top: 9px; font-style: italic; }
+
+  #results { margin-top: 26px; display: none; }
+  .results-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+  .results-header h2 { font-family: var(--display); font-size: 1.9rem; letter-spacing: -.01em; }
+  .badges { display: flex; gap: 8px; flex-wrap: wrap; }
+  .badge { border-radius: 999px; padding: 5px 13px; font-size: .78rem; font-weight: 700; }
+  .badge.mcq { background: var(--blue-50); color: var(--blue); }
+  .badge.tf { background: var(--mint-soft); color: #047857; }
+  .badge.fitb { background: var(--gold-soft); color: #92660A; }
+
+  .action-btns { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+  .btn { padding: 11px 18px; border-radius: 12px; font-size: .85rem; font-weight: 700; border: none; cursor: pointer; transition: all .2s; display: flex; align-items: center; gap: 7px; }
+  .btn-primary { background: var(--blue); color: #fff; }
+  .btn-primary:hover { background: var(--blue-600); }
+  .btn-gold { background: var(--coral); color: #fff; box-shadow: 0 4px 0 #A2433C; }
+  .btn-gold:hover { filter: brightness(1.03); }
+  .btn-gold:active { transform: translateY(2px); box-shadow: 0 2px 0 #A2433C; }
+  .btn-ghost { background: var(--surface); color: var(--ink); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--blue); color: var(--blue); }
+
+  #qList { display: flex; flex-direction: column; gap: 12px; max-height: 540px; overflow-y: auto; padding-right: 4px; }
+  #qList::-webkit-scrollbar { width: 6px; }
+  #qList::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 999px; }
+  .qcard { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px; border-left: 4px solid transparent; box-shadow: var(--shadow); }
+  .qcard.mcq { border-left-color: var(--blue); }
+  .qcard.tf { border-left-color: var(--mint); }
+  .qcard.fitb { border-left-color: var(--gold); }
+  .qcard-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .qtype-tag { font-size: .68rem; font-weight: 800; padding: 3px 9px; border-radius: 999px; text-transform: uppercase; letter-spacing: .04em; }
+  .qtype-tag.mcq { background: var(--blue-50); color: var(--blue); }
+  .qtype-tag.tf { background: var(--mint-soft); color: #047857; }
+  .qtype-tag.fitb { background: var(--gold-soft); color: #92660A; }
+  .qcard-concept { font-size: .76rem; color: var(--muted2); margin-left: auto; }
+  .qcard-num { font-size: .76rem; color: var(--muted2); font-family: var(--mono); }
+  .qcard-text { font-size: .96rem; line-height: 1.55; margin-bottom: 12px; }
+  .qcard-options { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+  .opt { font-size: .85rem; padding: 8px 13px; border-radius: 10px; background: var(--surface2); border: 1px solid var(--border); color: var(--muted); }
+  .opt.correct { background: var(--mint-soft); border-color: rgba(78,159,123,.4); color: #047857; font-weight: 700; }
+  .qcard-answer { margin-bottom: 10px; font-size: .85rem; color: #92660A; }
+  .qcard-expl { font-size: .82rem; color: var(--muted); border-top: 1px solid var(--border); padding-top: 10px; line-height: 1.5; }
+
+  #toast { position: fixed; bottom: 24px; right: 24px; background: var(--ink); color: #fff; border-radius: 12px; padding: 13px 20px; font-size: .85rem; font-weight: 700; transform: translateY(60px); opacity: 0; transition: all .3s; pointer-events: none; z-index: 999; box-shadow: var(--shadow-pop); }
+  #toast.show { transform: translateY(0); opacity: 1; }
+  #toast.success { background: var(--mint); }
+  #toast.error { background: var(--coral); }
+
+  #jsonPreview { margin-top: 16px; display: none; background: #0F172A; border-radius: 14px; padding: 18px; font-family: var(--mono); font-size: .76rem; color: #A8C0E0; max-height: 260px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+
+  @media (max-width: 600px) {
+    header h1 { font-size: 2rem; }
+    .action-btns { flex-direction: column; }
+    .btn { justify-content: center; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <span class="brand">
+      <svg width="30" height="30" viewBox="0 0 64 64" aria-hidden="true">
+        <path d="M8 22 Q 32 10 56 22 L 56 18 Q 32 6 8 18 Z" fill="#C25F5F"/>
+        <path d="M10 22 L 32 18 L 32 50 L 10 46 Z" fill="#E8A317"/>
+        <path d="M54 22 L 32 18 L 32 50 L 54 46 Z" fill="#E8A317" opacity="0.9"/>
+        <rect x="31" y="18" width="2" height="32" fill="#FFFFFF" opacity="0.5"/>
+        <path d="M8 46 Q 32 56 56 46 L 56 50 Q 32 60 8 50 Z" fill="#7090C0"/>
+        <rect x="44" y="6"  width="6" height="6" rx="1" fill="#E8A317"/>
+        <rect x="52" y="10" width="5" height="5" rx="1" fill="#7090C0"/>
+        <rect x="46" y="14" width="4" height="4" rx="1" fill="#C25F5F"/>
+      </svg>
+      <span class="brand-name">QuizSpark</span>
+    </span>
+    <h1>Turn any PDF into a quiz.</h1>
+    <p>Upload PDFs → extract the text → generate ready-to-play questions.</p>
+  </header>
+
+  <div id="dropZone">
+    <div class="dz-icon">📄</div>
+    <h3>Drag &amp; drop PDF files here</h3>
+    <p>Multiple files supported · max 20&nbsp;MB each</p>
+    <div class="browse-btn" id="browseBtn">Browse files</div>
+    <input type="file" id="fileInput" accept=".pdf" multiple>
+  </div>
+
+  <div id="fileList"></div>
+
+  <div class="settings-bar">
+    <label>
+      Questions per PDF
+      <input type="range" id="qCount" min="3" max="20" value="8" oninput="document.getElementById('qCountVal').textContent=this.value">
+      <span class="val" id="qCountVal">8</span>
+    </label>
+    <span class="sep">•</span>
+    <span class="types-label">Types</span>
+    <div class="chk-group">
+      <label><input type="checkbox" id="chkMCQ" checked> Multiple choice</label>
+      <label><input type="checkbox" id="chkTF" checked> True / False</label>
+      <label><input type="checkbox" id="chkFITB" checked> Fill-in-blank</label>
+    </div>
+  </div>
+
+  <button id="generateBtn" disabled>✦ Generate questions</button>
+
+  <div id="errBox"></div>
+
+  <div id="progressBar" class="card">
+    <div class="prog-label"><span id="progLabel">Extracting text…</span><span id="progPct">0%</span></div>
+    <div class="prog-track"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+    <div class="prog-step" id="progStep">Starting…</div>
+  </div>
+
+  <div id="results">
+    <div class="results-header">
+      <h2>Your questions</h2>
+      <div class="badges">
+        <span class="badge mcq" id="bMCQ">0 MCQ</span>
+        <span class="badge tf" id="bTF">0 T/F</span>
+        <span class="badge fitb" id="bFITB">0 Fill-in</span>
+      </div>
+    </div>
+    <div class="action-btns">
+      <button class="btn btn-gold" onclick="sendToApp()">🚀 Send to app</button>
+      <button class="btn btn-primary" onclick="copyJSON()">📋 Copy JSON</button>
+      <button class="btn btn-ghost" onclick="toggleJSON()">{ } View JSON</button>
+      <button class="btn btn-ghost" onclick="resetAll()">↺ Reset</button>
+    </div>
+    <div id="jsonPreview"></div>
+    <div id="qList"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── pdf.js ───────────────────────────────────────────────
+(function loadPdfJs() {
+  const s = document.createElement('script');
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js';
+  s.onload = () => {
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+    console.log('[PDF-QG] pdf.js loaded OK');
+  };
+  s.onerror = () => showErr('Failed to load pdf.js from CDN.');
+  document.head.appendChild(s);
+})();
+
+let files = [];
+let generatedQuestions = [];
+let jsonVisible = false;
+let busy = false;
+
+// ── Drop zone ─────────────────────────────────────────────
+const dz = document.getElementById('dropZone');
+const fi = document.getElementById('fileInput');
+
+document.getElementById('browseBtn').addEventListener('click', () => fi.click());
+dz.addEventListener('click', e => {
+  if (['dropZone','dz-icon'].some(c => e.target.id === c || e.target.className === c) ||
+      e.target.tagName === 'H3' || e.target.tagName === 'P') fi.click();
+});
+dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', ()  => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); addFiles([...e.dataTransfer.files]); });
+fi.addEventListener('change', () => { addFiles([...fi.files]); fi.value = ''; });
+
+function addFiles(newFiles) {
+  const pdfs = newFiles.filter(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
+  if (!pdfs.length) { showToast('Please upload PDF files only.', 'error'); return; }
+  pdfs.forEach(f => {
+    if (f.size > 20 * 1024 * 1024) { showToast(`${f.name} exceeds the 20MB limit.`, 'error'); return; }
+    if (!files.find(x => x.name === f.name && x.size === f.size)) files.push(f);
+  });
+  renderFileList();
+  document.getElementById('generateBtn').disabled = files.length === 0 || busy;
+}
+
+function renderFileList() {
+  document.getElementById('fileList').innerHTML = files.map((f, i) => `
+    <div class="file-item" id="fi-${i}">
+      <div class="fi-icon">📄</div>
+      <div class="fi-info">
+        <div class="fi-name">${escapeHtml(f.name)}</div>
+        <div class="fi-size">${(f.size/1024).toFixed(1)} KB</div>
+      </div>
+      <span class="fi-status ready" id="fis-${i}">Ready</span>
+      <button class="fi-remove" onclick="removeFile(${i})" title="Remove">✕</button>
+    </div>`).join('');
+}
+
+function removeFile(i) {
+  files.splice(i, 1);
+  renderFileList();
+  document.getElementById('generateBtn').disabled = files.length === 0 || busy;
+}
+
+function setFileStatus(i, cls, label) {
+  const el = document.getElementById(`fis-${i}`);
+  if (el) { el.className = `fi-status ${cls}`; el.textContent = label; }
+}
+
+// ── PDF extraction ────────────────────────────────────────
+async function extractText(file, idx) {
+  setFileStatus(idx, 'extracting', 'Extracting…');
+  if (typeof pdfjsLib === 'undefined') throw new Error('pdf.js not loaded yet — try again in a moment.');
+  const ab  = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+  let text = '';
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page    = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    text += content.items.map(it => it.str).join(' ') + '\n';
+  }
+  const cleaned = text.replace(/\s+/g, ' ').trim();
+  if (cleaned.length < 100) throw new Error('Not enough extractable text (may be a scanned/image PDF).');
+  setFileStatus(idx, 'done', 'Extracted');
+  console.log(`[PDF-QG] ${file.name}: ${cleaned.length} chars`);
+  return cleaned;
+}
+
+// ── Generate ──────────────────────────────────────────────
+document.getElementById('generateBtn').addEventListener('click', generate);
+
+async function generate() {
+  if (busy || !files.length) return;
+  hideErr();
+
+  const qCount = parseInt(document.getElementById('qCount').value, 10);
+  const types  = [];
+  if (document.getElementById('chkMCQ').checked)  types.push('mcq');
+  if (document.getElementById('chkTF').checked)   types.push('true_false');
+  if (document.getElementById('chkFITB').checked) types.push('fill_in_blank');
+  if (!types.length) { showToast('Select at least one question type.', 'error'); return; }
+
+  busy = true;
+  document.getElementById('generateBtn').disabled = true;
+  document.getElementById('progressBar').style.display = 'block';
+  document.getElementById('results').style.display = 'none';
+  generatedQuestions = [];
+
+  try {
+    // Step 1 — Extract
+    const allTexts = [];
+    for (let i = 0; i < files.length; i++) {
+      setProgress(Math.round((i / files.length) * 40), `Extracting: ${files[i].name}`, 'Reading PDF text…');
+      try {
+        allTexts.push({ name: files[i].name, text: await extractText(files[i], i) });
+      } catch (err) {
+        console.error('[PDF-QG] Extraction error:', err);
+        setFileStatus(i, 'error', 'Error');
+        showToast(`${files[i].name}: ${err.message}`, 'error');
+      }
+    }
+    if (!allTexts.length) throw new Error('No text could be extracted from any PDF.');
+
+    // Step 2 — Build prompt
+    setProgress(50, 'Generating questions…', 'Writing questions from the content…');
+    const combinedText = allTexts.map(t =>
+      `=== SOURCE: ${t.name} ===\n${t.text.slice(0, 6000)}`
+    ).join('\n\n');
+
+
+
+    // Step 3 — Call our Vercel API route (key lives server-side)
+    setProgress(55, 'Generating questions…', 'Calling Claude AI…');
+    console.log(`[PDF-QG] Sending to /api/generate-questions, text length: ${combinedText.length}`);
+
+    let resp;
+    try {
+      resp = await fetch('/api/generate-questions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: combinedText, count: qCount, types })
+      });
+    } catch (netErr) {
+      throw new Error(`Network error: ${netErr.message}`);
+    }
+
+    if (!resp.ok) {
+      let errMsg = `API error ${resp.status}`;
+      try { const b = await resp.json(); errMsg = b?.error || errMsg; } catch (_) {}
+      throw new Error(errMsg);
+    }
+
+    // Step 4 — Parse (server already returns clean { questions: [] })
+    setProgress(85, 'Parsing response…', 'Almost done…');
+    const data = await resp.json();
+    console.log('[PDF-QG] Response received');
+
+    if (!data.questions || !Array.isArray(data.questions) || !data.questions.length)
+      throw new Error('No questions returned. The PDF may not have enough content.');
+
+    // Sanitise
+    generatedQuestions = parsed.questions.map((q, i) => {
+      if (!['mcq','true_false','fill_in_blank'].includes(q.type)) {
+        console.warn(`[PDF-QG] Q${i} bad type "${q.type}", defaulting to mcq`); q.type = 'mcq';
+      }
+      if (q.type === 'true_false' && !q.options) q.options = ['True','False'];
+      if (typeof q.correct !== 'number') q.correct = 0;
+      q.concept     = q.concept     || 'General';
+      q.explanation = q.explanation || '';
+      return q;
+    });
+
+    setProgress(100, 'Done!', `${generatedQuestions.length} questions generated`);
+    setTimeout(() => {
+      document.getElementById('progressBar').style.display = 'none';
+      renderResults();
+      busy = false;
+      document.getElementById('generateBtn').disabled = false;
+    }, 600);
+
+  } catch (err) {
+    console.error('[PDF-QG] Generation failed:', err);
+    setProgress(0, 'Error', '');
+    document.getElementById('progressBar').style.display = 'none';
+    showErr(err.message);
+    busy = false;
+    document.getElementById('generateBtn').disabled = false;
+  }
+}
+
+// ── Progress ──────────────────────────────────────────────
+function setProgress(pct, label, step) {
+  document.getElementById('progFill').style.width  = pct + '%';
+  document.getElementById('progPct').textContent   = pct + '%';
+  document.getElementById('progLabel').textContent = label;
+  document.getElementById('progStep').textContent  = step;
+}
+
+// ── Render results ────────────────────────────────────────
+function renderResults() {
+  const qs = generatedQuestions;
+  document.getElementById('bMCQ').textContent  = `${qs.filter(q => q.type === 'mcq').length} MCQ`;
+  document.getElementById('bTF').textContent   = `${qs.filter(q => q.type === 'true_false').length} T/F`;
+  document.getElementById('bFITB').textContent = `${qs.filter(q => q.type === 'fill_in_blank').length} Fill-in`;
+
+  const tagMap = { mcq: 'Multiple choice', true_false: 'True / False', fill_in_blank: 'Fill-in-blank' };
+  const clsMap = { mcq: 'mcq', true_false: 'tf', fill_in_blank: 'fitb' };
+
+  document.getElementById('qList').innerHTML = qs.map((q, i) => {
+    const cls = clsMap[q.type] || 'mcq';
+    let optHtml = '';
+    if (q.options && Array.isArray(q.options)) {
+      optHtml = `<div class="qcard-options">${q.options.map((o, oi) =>
+        `<div class="opt${oi === q.correct ? ' correct' : ''}">${String.fromCharCode(65+oi)}. ${escapeHtml(o)}</div>`
+      ).join('')}</div>`;
+    }
+    if (q.type === 'fill_in_blank' && q.answer) {
+      optHtml = `<div class="qcard-answer">✏️ Answer: <strong>${escapeHtml(q.answer)}</strong></div>`;
+    }
+    return `<div class="qcard ${cls}">
+      <div class="qcard-header">
+        <span class="qcard-num">#${i+1}</span>
+        <span class="qtype-tag ${cls}">${tagMap[q.type] || q.type}</span>
+        <span class="qcard-concept">${escapeHtml(q.concept || '')}</span>
+      </div>
+      <div class="qcard-text">${escapeHtml(q.text || '')}</div>
+      ${optHtml}
+      ${q.explanation ? `<div class="qcard-expl">💡 ${escapeHtml(q.explanation)}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  document.getElementById('results').style.display = 'block';
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+}
+
+// ── Export ────────────────────────────────────────────────
+function getJSON() { return JSON.stringify({ questions: generatedQuestions }, null, 2); }
+
+function copyJSON() {
+  if (!generatedQuestions.length) { showToast('Generate questions first.', 'error'); return; }
+  navigator.clipboard.writeText(getJSON())
+    .then(() => showToast('Questions JSON copied!', 'success'))
+    .catch(() => showToast('Clipboard access denied — use View JSON instead.', 'error'));
+}
+
+// Bridge: CustomEvent + postMessage (iframe / opener support)
+function sendToApp() {
+  if (!generatedQuestions.length) { showToast('Generate questions first.', 'error'); return; }
+  const payload = { questions: generatedQuestions };
+  try { window.dispatchEvent(new CustomEvent('cmQuestionsReady', { detail: payload, bubbles: true })); } catch (e) {}
+  try { if (window.parent && window.parent !== window) window.parent.postMessage({ type: 'cmQuestionsReady', questions: generatedQuestions }, '*'); } catch (e) {}
+  try { if (window.opener) window.opener.postMessage({ type: 'cmQuestionsReady', questions: generatedQuestions }, '*'); } catch (e) {}
+  showToast(`Sent ${generatedQuestions.length} questions to the app!`, 'success');
+}
+
+function toggleJSON() {
+  const el = document.getElementById('jsonPreview');
+  jsonVisible = !jsonVisible;
+  el.style.display = jsonVisible ? 'block' : 'none';
+  if (jsonVisible) el.textContent = getJSON();
+}
+
+function resetAll() {
+  files = []; generatedQuestions = []; jsonVisible = false; busy = false;
+  document.getElementById('fileList').innerHTML = '';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('progressBar').style.display = 'none';
+  document.getElementById('jsonPreview').style.display = 'none';
+  document.getElementById('generateBtn').disabled = true;
+  document.getElementById('fileInput').value = '';
+  hideErr();
+}
+
+// ── Error box ─────────────────────────────────────────────
+function showErr(msg) {
+  const el = document.getElementById('errBox');
+  el.textContent = '⚠️ ' + msg;
+  el.style.display = 'block';
+}
+function hideErr() { document.getElementById('errBox').style.display = 'none'; }
+
+// ── Toast ─────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = ''; }, 3200);
+}
+
+// ── Util ──────────────────────────────────────────────────
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c =>
+    ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
 </script>
 </body>
 </html>
